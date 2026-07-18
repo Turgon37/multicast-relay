@@ -4,7 +4,6 @@ import argparse
 import binascii
 import errno
 import json
-import http.server
 import os
 import re
 import select
@@ -1006,12 +1005,19 @@ class PacketRelay():
     def cidrToNetmask(bits):
         return socket.inet_ntoa(struct.pack('!I', (1 << 32) - (1 << (32 - bits))))
 
-class K8sCheck(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(bytes('OK', 'utf-8'))
+def startK8sCheck(port, logger):
+    import http.server
+
+    class K8sCheck(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(bytes('OK', 'utf-8'))
+
+    webServer = http.server.HTTPServer(('0.0.0.0', port), K8sCheck)
+    logger.info('Starting Kubernetes liveness/readiness server on port %d' % port)
+    threading.Thread(target=webServer.serve_forever, daemon=True).start()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -1172,8 +1178,7 @@ def main():
         packetRelay.addListener(addr, port, relay[1])
 
     if args.k8sport:
-        webServer = http.server.HTTPServer(('0.0.0.0', args.k8sport), K8sCheck)
-        threading.Thread(target=webServer.serve_forever, daemon=True).start()
+        startK8sCheck(args.k8sport, logger)
 
     packetRelay.loop()
 
