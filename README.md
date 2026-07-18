@@ -21,7 +21,7 @@ that IP forwarding is enabled (`echo 1 > /proc/sys/net/ipv4/ip_forward`) and
 that no firewalling is in place that would prevent connections being
 established.
 
-`usage: multicast-relay.py [-h] --interfaces INTERFACE INTERFACE [INTERFACE ...] [--noTransmitInterfaces INTERFACE ...] [-ifFilter IFFILTER] [--relay BROADCAST_OR_MULTICAST:PORT [BROADCAST_OR_MULTICAST:PORT ...]] [--noMDNS] [--noSSDP] [--noSonosDiscovery] [--oneInterface] [--homebrewNetifaces] [--wait] [--listen REMOTE_ADDRESS [REMOTE_ADDRESS ...]] [--remote REMOTE_ADDRESS] [--remotePort PORT] [--remoteRetry SECS] [--foreground] [--logfile FILE] [--verbose]`
+`usage: multicast-relay.py [-h] --interfaces INTERFACE INTERFACE [INTERFACE ...] [--noTransmitInterfaces INTERFACE ...] [-ifFilter IFFILTER] [--relay BROADCAST_OR_MULTICAST:PORT [BROADCAST_OR_MULTICAST:PORT ...]] [--noMDNS] [--noSSDP] [--noSonosDiscovery] [--oneInterface] [--homebrewNetifaces] [--wait] [--listen REMOTE_ADDRESS [REMOTE_ADDRESS ...]] [--remote REMOTE_ADDRESS] [--remotePort PORT] [--remoteRetry SECS] [--foreground] [--logfile FILE] [--verbose] [--debug]`
 
 `--interfaces` specifies the >= 2 interfaces that you desire to listen to and
 relay between. You can specify an interface by name, by IP address, or by
@@ -76,9 +76,10 @@ flag also encourages logging to stdout as well as to the syslog.
 
 `--verbose` steps up the logging.
 
+`--debug` logs a tcpdump-like description of every packet received by the relay. Use it with `--foreground` to print the diagnostics to standard output.
+
 multicast-relay.py requires the python 'netifaces' package. Install via
 'easy_install netifaces' or 'pip install netifaces'. For ZeroShell users,
 please review [README-ZeroShell](README-ZeroShell.md) for further instructions.
 
 Al Smith <ajs@aeschi.eu>
-

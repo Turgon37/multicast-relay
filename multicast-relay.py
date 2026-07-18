@@ -18,8 +18,9 @@ import time
 # https://github.com/alsmith/multicast-relay
 
 class Logger():
-    def __init__(self, foreground, logfile, verbose):
+    def __init__(self, foreground, logfile, verbose, debug):
         self.verbose = verbose
+        self.debugEnabled = debug
 
         try:
             import logging
@@ -41,7 +42,9 @@ class Logger():
                 file_handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%b-%d %H:%M:%S'))
                 logger.addHandler(file_handler)
 
-            if verbose:
+            if debug:
+                logger.setLevel(logging.DEBUG)
+            elif verbose:
                 logger.setLevel(logging.INFO)
             else:
                 logger.setLevel(logging.WARN)
@@ -54,6 +57,13 @@ class Logger():
             import logging
             logging.getLogger(__file__).info(*args, **kwargs)
         elif self.verbose:
+            print(args, kwargs)
+
+    def debug(self, *args, **kwargs):
+        if self.loggingAvailable:
+            import logging
+            logging.getLogger(__file__).debug(*args, **kwargs)
+        elif self.debugEnabled:
             print(args, kwargs)
 
     def warning(self, *args, **kwargs):
@@ -176,7 +186,7 @@ class PacketRelay():
     def __init__(self, interfaces, noTransmitInterfaces, ifFilter, waitForIP, ttl,
                  oneInterface, homebrewNetifaces, ifNameStructLen, allowNonEther,
                  ssdpUnicastAddr, mdnsForceUnicast, masquerade, listen, remote,
-                 remotePort, remoteRetry, noRemoteRelay, aes, logger):
+                 remotePort, remoteRetry, noRemoteRelay, aes, debug, logger):
         self.interfaces = interfaces
         self.noTransmitInterfaces = noTransmitInterfaces or []
 
@@ -227,6 +237,7 @@ class PacketRelay():
         self.remoteRetry = remoteRetry
         self.noRemoteRelay = noRemoteRelay
         self.aes = Cipher(aes)
+        self.debug = debug
 
         self.remoteConnections = []
 
@@ -378,6 +389,92 @@ class PacketRelay():
         udpHeader = struct.pack('!4H', srcPort, dstPort, udpLength, 0)
 
         return ipHeader + udpHeader + udpData
+
+    @staticmethod
+    def dnsName(data, offset):
+        labels = []
+        nextOffset = None
+        visited = set()
+
+        while True:
+            if offset >= len(data) or offset in visited:
+                raise ValueError('invalid DNS name')
+            visited.add(offset)
+            length = data[offset]
+            offset += 1
+
+            if length == 0:
+                if nextOffset is None:
+                    nextOffset = offset
+                return '.'.join(labels) + '.', nextOffset
+
+            if length & 0xc0 == 0xc0:
+                if offset >= len(data):
+                    raise ValueError('truncated DNS pointer')
+                pointer = ((length & 0x3f) << 8) | data[offset]
+                offset += 1
+                if nextOffset is None:
+                    nextOffset = offset
+                offset = pointer
+                continue
+
+            if length & 0xc0 or offset + length > len(data):
+                raise ValueError('invalid DNS label')
+            labels.append(data[offset:offset + length].decode('ascii', 'replace'))
+            offset += length
+
+    @staticmethod
+    def dnsDescription(data):
+        if len(data) < 12:
+            raise ValueError('truncated DNS header')
+
+        (identifier, flags, questions, answers, authorities, additionals) = struct.unpack('!6H', data[:12])
+        if not questions:
+            return '%d %d/%d/%d (%d)' % (identifier, answers, authorities, additionals, len(data))
+
+        (name, offset) = PacketRelay.dnsName(data, 12)
+        if offset + 4 > len(data):
+            raise ValueError('truncated DNS question')
+        (queryType, queryClass) = struct.unpack('!HH', data[offset:offset + 4])
+        queryTypes = {1: 'A', 12: 'PTR', 16: 'TXT', 28: 'AAAA', 33: 'SRV', 255: 'ANY'}
+        queryType = queryTypes.get(queryType, 'TYPE%d' % queryType)
+        queryMarker = ' (QM)' if queryClass & 0x8000 else ''
+
+        if flags & 0x8000:
+            return '%d %d/%d/%d %s %s (%d)' % (identifier, answers, authorities, additionals, queryType, name, len(data))
+        return '%d %s%s? %s (%d)' % (identifier, queryType, queryMarker, name, len(data))
+
+    @staticmethod
+    def packetDescription(data):
+        if isinstance(data, str):
+            data = data.encode('latin-1')
+        if len(data) < 20:
+            return 'Malformed IPv4 packet (%d bytes)' % len(data)
+
+        versionAndHeaderLength = data[0]
+        if versionAndHeaderLength >> 4 != 4:
+            return 'Non-IPv4 packet (%d bytes)' % len(data)
+        ipHeaderLength = (versionAndHeaderLength & 0x0f) * 4
+        if ipHeaderLength < 20 or len(data) < ipHeaderLength:
+            return 'Malformed IPv4 packet (%d bytes)' % len(data)
+
+        srcAddr = socket.inet_ntoa(data[12:16])
+        dstAddr = socket.inet_ntoa(data[16:20])
+        protocol = data[9]
+        if protocol != socket.IPPROTO_UDP or len(data) < ipHeaderLength + 8:
+            return 'IP %s > %s: protocol %d, length %d' % (srcAddr, dstAddr, protocol, len(data) - ipHeaderLength)
+
+        (srcPort, dstPort, udpLength, _) = struct.unpack('!4H', data[ipHeaderLength:ipHeaderLength + 8])
+        udpDataEnd = min(len(data), ipHeaderLength + udpLength)
+        udpData = data[ipHeaderLength + 8:udpDataEnd]
+        description = 'UDP, length %d' % len(udpData)
+        if srcPort in (53, 5353) or dstPort in (53, 5353):
+            try:
+                description = PacketRelay.dnsDescription(udpData)
+            except ValueError:
+                pass
+
+        return 'IP %s.%d > %s.%d: %s' % (srcAddr, srcPort, dstAddr, dstPort, description)
 
     @staticmethod
     def mdnsSetUnicastBit(data, ipHeaderLength):
@@ -579,6 +676,9 @@ class PacketRelay():
                 srcAddr = socket.inet_ntoa(data[12:16])
                 dstAddr = socket.inet_ntoa(data[16:20])
 
+                if self.debug and PacketRelay.isMulticast(dstAddr):
+                    self.logger.debug('Received packet: %s' % PacketRelay.packetDescription(data))
+
                 # Compute the length of the IP header so that we can then move past
                 # it and delve into the UDP packet to find out what destination port
                 # this packet was sent to. The length is encoded in the first least
@@ -601,6 +701,8 @@ class PacketRelay():
                             continue
                         try:
                             remoteConnection.sendall(struct.pack('!H', len(packet)) + packet)
+                            if self.debug:
+                                self.logger.debug('Forwarded packet to remote: %s' % PacketRelay.packetDescription(data))
 
                             for remote in self.remoteAddrs:
                                 if remote['socket'] == remoteConnection and remote['connecting']:
@@ -939,6 +1041,8 @@ def main():
                         help='Save logs to this file.')
     parser.add_argument('--verbose', action='store_true',
                         help='Enable verbose output.')
+    parser.add_argument('--debug', action='store_true',
+                        help='Log a tcpdump-like description of each received packet.')
     args = parser.parse_args()
 
     if len(args.interfaces) < 2 and not args.oneInterface and not args.listen and not args.remote:
@@ -960,7 +1064,7 @@ def main():
         os.setsid()
         os.close(sys.stdin.fileno())
 
-    logger = Logger(args.foreground, args.logfile, args.verbose)
+    logger = Logger(args.foreground, args.logfile, args.verbose, args.debug)
 
     relays = set()
     if not args.noMDNS:
@@ -996,6 +1100,7 @@ def main():
                               remoteRetry          = args.remoteRetry,
                               noRemoteRelay        = args.noRemoteRelay,
                               aes                  = args.aes,
+                              debug                = args.debug,
                               logger               = logger)
 
     for relay in relays:
@@ -1044,4 +1149,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
