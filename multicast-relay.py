@@ -693,7 +693,7 @@ class PacketRelay():
                 dstAddr = socket.inet_ntoa(data[16:20])
 
                 if self.debug and PacketRelay.isMulticast(dstAddr):
-                    self.logger.debug('Received packet: %s' % PacketRelay.packetDescription(data))
+                    self.logger.debug('Received packet on %s: %s' % (receivingInterface, PacketRelay.packetDescription(data)))
 
                 # Compute the length of the IP header so that we can then move past
                 # it and delve into the UDP packet to find out what destination port
@@ -718,7 +718,7 @@ class PacketRelay():
                         try:
                             remoteConnection.sendall(struct.pack('!H', len(packet)) + packet)
                             if self.debug:
-                                self.logger.debug('Forwarded packet to remote: %s' % PacketRelay.packetDescription(data))
+                                self.logger.debug('Forwarded packet to remote received on %s: %s' % (receivingInterface, PacketRelay.packetDescription(data)))
 
                             for remote in self.remoteAddrs:
                                 if remote['socket'] == remoteConnection and remote['connecting']:
