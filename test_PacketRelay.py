@@ -14,6 +14,22 @@ import importlib
 mr = importlib.import_module('multicast-relay')
 
 
+def test_packet_description_mdns_query():
+    packet = bytes.fromhex(
+        '4500004500000000ff1100000a0103fee00000fb'
+        '14e914e900310000'
+        '000000000001000000000000'
+        '114d694465736b4c616d7031532d37304542056c6f63616c0000018001'
+    )
+
+    assert mr.PacketRelay.packetDescription(packet) == \
+        'IP 10.1.3.254.5353 > 224.0.0.251.5353: 0 A (QM)? MiDeskLamp1S-70EB.local. (41)'
+
+
+def test_packet_description_malformed_packet():
+    assert mr.PacketRelay.packetDescription(b'\x45') == 'Malformed IPv4 packet (1 bytes)'
+
+
 def test_net_checksum_ipv4():
     ipv4_header_tests = (
         # IGMPv2 multicast to 224.0.0.1:
