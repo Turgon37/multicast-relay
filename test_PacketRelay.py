@@ -66,6 +66,15 @@ def test_is_own_udp_packet():
     assert not relay.isOwnUdpPacket('10.1.3.254', 44323)
 
 
+def test_stop_packet_relay():
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.running = True
+
+    relay.stop()
+
+    assert not relay.running
+
+
 def test_net_checksum_ipv4():
     ipv4_header_tests = (
         # IGMPv2 multicast to 224.0.0.1:
