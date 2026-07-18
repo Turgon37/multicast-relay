@@ -338,17 +338,18 @@ class PacketRelay():
             # Generate a transmitter socket. Each interface
             # requires its own transmitting socket.
             if interface not in self.noTransmitInterfaces:
+                sourcePort = None
                 if self.udp:
                     tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
                     tx.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                     tx.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(ip))
-                    tx.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 0)
                     tx.bind((ip, 0))
+                    sourcePort = tx.getsockname()[1]
                 else:
                     tx = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
                     tx.bind((ifname, 0))
 
-                self.transmitters.append({'relay': {'addr': listenIP, 'port': port}, 'interface': ifname, 'addr': ip, 'mac': mac, 'netmask': netmask, 'broadcast': broadcast, 'socket': tx, 'service': service})
+                self.transmitters.append({'relay': {'addr': listenIP, 'port': port}, 'interface': ifname, 'addr': ip, 'mac': mac, 'netmask': netmask, 'broadcast': broadcast, 'socket': tx, 'sourcePort': sourcePort, 'service': service})
 
         if self.isMulticast(addr):
             rx.bind((addr, port))
@@ -600,6 +601,9 @@ class PacketRelay():
     def match(self, addr, port):
         return ((addr, port)) in self.bindings
 
+    def isOwnUdpPacket(self, srcAddr, srcPort):
+        return self.udp and any(tx['addr'] == srcAddr and tx['sourcePort'] == srcPort for tx in self.transmitters)
+
     def loop(self):
         # Record where the most recent SSDP searches came from, to relay unicast answers
         # Note: ideally we'd be more clever and record multiple, but in practice
@@ -693,9 +697,6 @@ class PacketRelay():
                 srcAddr = socket.inet_ntoa(data[12:16])
                 dstAddr = socket.inet_ntoa(data[16:20])
 
-                if self.debug and PacketRelay.isMulticast(dstAddr):
-                    self.logger.debug('Received packet on %s: %s' % (receivingInterface, PacketRelay.packetDescription(data)))
-
                 # Compute the length of the IP header so that we can then move past
                 # it and delve into the UDP packet to find out what destination port
                 # this packet was sent to. The length is encoded in the first least
@@ -706,6 +707,12 @@ class PacketRelay():
                 ipHeaderLength = (struct.unpack('B', firstDataByte)[0] & 0x0f) * 4
                 srcPort = struct.unpack('!H', data[ipHeaderLength+0:ipHeaderLength+2])[0]
                 dstPort = struct.unpack('!H', data[ipHeaderLength+2:ipHeaderLength+4])[0]
+
+                if receivingInterface == 'local' and self.isOwnUdpPacket(srcAddr, srcPort):
+                    continue
+
+                if self.debug and PacketRelay.isMulticast(dstAddr):
+                    self.logger.debug('Received packet on %s: %s' % (receivingInterface, PacketRelay.packetDescription(data)))
 
                 # raw sockets cannot be bound to a specific port, so we receive all UDP packets with matching dstAddr
                 if receivingInterface == 'local' and not self.match(dstAddr, dstPort):

@@ -56,6 +56,16 @@ def test_transmit_udp_packet():
     assert udpSocket.options == [(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 64)]
 
 
+def test_is_own_udp_packet():
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.udp = True
+    relay.transmitters = [{'addr': '10.1.12.187', 'sourcePort': 44323}]
+
+    assert relay.isOwnUdpPacket('10.1.12.187', 44323)
+    assert not relay.isOwnUdpPacket('10.1.12.187', 5353)
+    assert not relay.isOwnUdpPacket('10.1.3.254', 44323)
+
+
 def test_net_checksum_ipv4():
     ipv4_header_tests = (
         # IGMPv2 multicast to 224.0.0.1:
