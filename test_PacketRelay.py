@@ -7,6 +7,7 @@
 # Note: examples of packets and checksums can be found using wireshark.
 #  You can then right-click and Copy->...As Escaped string.
 
+import socket
 import struct
 # We can't use import directly because of the hyphen in the file name,
 # so we do this via importlib
@@ -28,6 +29,31 @@ def test_packet_description_mdns_query():
 
 def test_packet_description_malformed_packet():
     assert mr.PacketRelay.packetDescription(b'\x45') == 'Malformed IPv4 packet (1 bytes)'
+
+
+def test_transmit_udp_packet():
+    class UdpSocket():
+        def __init__(self):
+            self.sent = None
+            self.options = []
+
+        def setsockopt(self, level, option, value):
+            self.options.append((level, option, value))
+
+        def sendto(self, data, destination):
+            self.sent = (data, destination)
+
+    udpSocket = UdpSocket()
+    packet = bytes.fromhex(
+        '4500002100000000401100000a000001e00000fb'
+        '14e914e9000d0000'
+        '68656c6c6f'
+    )
+
+    mr.PacketRelay.transmitUdpPacket(udpSocket, 20, packet)
+
+    assert udpSocket.sent == (b'hello', ('224.0.0.251', 5353))
+    assert udpSocket.options == [(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 64)]
 
 
 def test_net_checksum_ipv4():

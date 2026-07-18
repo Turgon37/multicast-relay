@@ -21,7 +21,7 @@ that IP forwarding is enabled (`echo 1 > /proc/sys/net/ipv4/ip_forward`) and
 that no firewalling is in place that would prevent connections being
 established.
 
-`usage: multicast-relay.py [-h] --interfaces INTERFACE INTERFACE [INTERFACE ...] [--noTransmitInterfaces INTERFACE ...] [-ifFilter IFFILTER] [--relay BROADCAST_OR_MULTICAST:PORT [BROADCAST_OR_MULTICAST:PORT ...]] [--noMDNS] [--noSSDP] [--noSonosDiscovery] [--oneInterface] [--homebrewNetifaces] [--wait] [--listen REMOTE_ADDRESS [REMOTE_ADDRESS ...]] [--remote REMOTE_ADDRESS] [--remotePort PORT] [--remoteRetry SECS] [--foreground] [--logfile FILE] [--verbose] [--debug]`
+`usage: multicast-relay.py [-h] --interfaces INTERFACE INTERFACE [INTERFACE ...] [--noTransmitInterfaces INTERFACE ...] [-ifFilter IFFILTER] [--relay BROADCAST_OR_MULTICAST:PORT [BROADCAST_OR_MULTICAST:PORT ...]] [--noMDNS] [--noSSDP] [--noSonosDiscovery] [--oneInterface] [--homebrewNetifaces] [--transmitUdp] [--wait] [--listen REMOTE_ADDRESS [REMOTE_ADDRESS ...]] [--remote REMOTE_ADDRESS] [--remotePort PORT] [--remoteRetry SECS] [--foreground] [--logfile FILE] [--verbose] [--debug]`
 
 `--interfaces` specifies the >= 2 interfaces that you desire to listen to and
 relay between. You can specify an interface by name, by IP address, or by
@@ -53,6 +53,8 @@ doesn't work on any other system than Linux but maybe useful for OpenWRT where
 it's rather tricky to compile up netifaces.
 
 `--allowNonEther` supports non-ethernet interfaces to be relayed [experimental].
+
+`--transmitUdp` sends relayed packets through UDP sockets instead of raw packet sockets. The outgoing socket is bound to the transmitting interface IP, so that IP is used as the source and the operating system selects the source port; the original source address and port are not preserved.
 
 `--wait` indicates that the relay should wait for an IPv4 address to be assigned
 to each interface rather than bailing immediately if an interface is yet to be
