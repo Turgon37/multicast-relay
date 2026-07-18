@@ -879,7 +879,7 @@ class PacketRelay():
             ifname = interface
 
         # Maybe we got an network/netmask combination?
-        elif re.match('\A\d+\.\d+\.\d+\.\d+\Z', interface):
+        elif re.match(r'\A\d+\.\d+\.\d+\.\d+\Z', interface):
             for i in self.nif.interfaces():
                 addrs = self.nif.ifaddresses(i)
                 if self.nif.AF_INET in addrs:
@@ -888,7 +888,7 @@ class PacketRelay():
                         break
 
         # Or perhaps we got an IP address?
-        elif re.match('\A\d+\.\d+\.\d+\.\d+/\d+\Z', interface):
+        elif re.match(r'\A\d+\.\d+\.\d+\.\d+/\d+\Z', interface):
             (network, netmask) = interface.split('/')
             netmask = '.'.join([str((0xffffffff << (32 - int(netmask)) >> i) & 0xff) for i in [24, 16, 8, 0]])
 
