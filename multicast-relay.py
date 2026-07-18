@@ -7,6 +7,7 @@ import json
 import os
 import re
 import select
+import signal
 import socket
 import struct
 import sys
@@ -202,6 +203,7 @@ class PacketRelay():
         self.allowNonEther = allowNonEther
         self.masquerade = masquerade or []
         self.udp = udp
+        self.running = True
 
         self.nif = Netifaces(homebrewNetifaces, ifNameStructLen)
         self.logger = logger
@@ -603,13 +605,16 @@ class PacketRelay():
     def isOwnUdpPacket(self, srcAddr, srcPort):
         return self.udp and any(tx['addr'] == srcAddr and tx['sourcePort'] == srcPort for tx in self.transmitters)
 
+    def stop(self):
+        self.running = False
+
     def loop(self):
         # Record where the most recent SSDP searches came from, to relay unicast answers
         # Note: ideally we'd be more clever and record multiple, but in practice
         #   recording the last one seems to be enough for a 'normal' home SSDP traffic
         #   (devices tend to retry SSDP queries multiple times anyway)
         recentSsdpSearchSrc = {}
-        while True:
+        while self.running:
             if self.remoteAddrs:
                 self.connectRemotes()
 
@@ -622,7 +627,11 @@ class PacketRelay():
                 (inputready, _, _) = select.select(additionalListeners + self.receivers, [], [], 1)
             except KeyboardInterrupt:
                 break
+            if not self.running:
+                break
             for s in inputready:
+                if not self.running:
+                    break
                 if s == self.listenSock:
                     (remoteConnection, remoteAddr) = s.accept()
                     if not len(list(filter(lambda addr: PacketRelay.onNetwork(remoteAddr[0], addr[0], PacketRelay.cidrToNetmask(int(addr[1]))), self.listenAddr))):
@@ -1138,6 +1147,13 @@ def main():
                               debug                = args.debug,
                               udp                  = args.transmitUdp,
                               logger               = logger)
+
+    def stopHandler(signum, frame):
+        logger.info('Received signal %d, stopping relay' % signum)
+        packetRelay.stop()
+
+    signal.signal(signal.SIGTERM, stopHandler)
+    signal.signal(signal.SIGINT, stopHandler)
 
     for relay in relays:
         try:
