@@ -186,7 +186,7 @@ class PacketRelay():
     def __init__(self, interfaces, noTransmitInterfaces, ifFilter, waitForIP, ttl,
                  oneInterface, homebrewNetifaces, ifNameStructLen, allowNonEther,
                  ssdpUnicastAddr, mdnsForceUnicast, masquerade, listen, remote,
-                 remotePort, remoteRetry, noRemoteRelay, aes, debug, logger):
+                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, logger):
         self.interfaces = interfaces
         self.noTransmitInterfaces = noTransmitInterfaces or []
 
@@ -202,6 +202,7 @@ class PacketRelay():
         self.oneInterface = oneInterface
         self.allowNonEther = allowNonEther
         self.masquerade = masquerade or []
+        self.udp = udp
 
         self.nif = Netifaces(homebrewNetifaces, ifNameStructLen)
         self.logger = logger
@@ -337,8 +338,14 @@ class PacketRelay():
             # Generate a transmitter socket. Each interface
             # requires its own transmitting socket.
             if interface not in self.noTransmitInterfaces:
-                tx = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
-                tx.bind((ifname, 0))
+                if self.udp:
+                    tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                    tx.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                    tx.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(ip))
+                    tx.bind((ip, 0))
+                else:
+                    tx = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+                    tx.bind((ifname, 0))
 
                 self.transmitters.append({'relay': {'addr': listenIP, 'port': port}, 'interface': ifname, 'addr': ip, 'mac': mac, 'netmask': netmask, 'broadcast': broadcast, 'socket': tx, 'service': service})
 
@@ -579,6 +586,15 @@ class PacketRelay():
                     raise
                 else:
                     self.logger.info('Error sending packet: %s' % str(e))
+
+    @staticmethod
+    def transmitUdpPacket(sock, ipHeaderLength, ipPacket):
+        dstAddr = socket.inet_ntoa(ipPacket[16:20])
+        (_, dstPort, udpLength, _) = struct.unpack('!4H', ipPacket[ipHeaderLength:ipHeaderLength+8])
+        udpData = ipPacket[ipHeaderLength+8:ipHeaderLength+udpLength]
+        if PacketRelay.isMulticast(dstAddr):
+            sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ipPacket[8])
+        sock.sendto(udpData, (dstAddr, dstPort))
 
     def match(self, addr, port):
         return ((addr, port)) in self.bindings
@@ -821,9 +837,12 @@ class PacketRelay():
                                                                                                           asSrc))
 
                         try:
-                            self.transmitPacket(tx['socket'], tx['mac'], destMac, ipHeaderLength, data)
+                            if self.udp:
+                                self.transmitUdpPacket(tx['socket'], ipHeaderLength, data)
+                            else:
+                                self.transmitPacket(tx['socket'], tx['mac'], destMac, ipHeaderLength, data)
                         except Exception as e:
-                            if e.errno == errno.ENXIO:
+                            if not self.udp and e.errno == errno.ENXIO:
                                 try:
                                     (ifname, mac, ip, netmask, broadcast) = self.getInterface(tx['interface'])
                                     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
@@ -1015,6 +1034,8 @@ def main():
                         help='Help the self-contained netifaces work out its ifName struct length.')
     parser.add_argument('--allowNonEther', action='store_true',
                         help='Allow non-ethernet interfaces to be configured.')
+    parser.add_argument('--transmitUdp', action='store_true',
+                        help='Transmit packets using UDP sockets instead of raw packet sockets.')
     parser.add_argument('--masquerade', nargs='+',
                         help='Masquerade outbound packets from these interface(s).')
     parser.add_argument('--wait', action='store_true',
@@ -1101,6 +1122,7 @@ def main():
                               noRemoteRelay        = args.noRemoteRelay,
                               aes                  = args.aes,
                               debug                = args.debug,
+                              udp                  = args.transmitUdp,
                               logger               = logger)
 
     for relay in relays:
