@@ -342,6 +342,7 @@ class PacketRelay():
                     tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
                     tx.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                     tx.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(ip))
+                    tx.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 0)
                     tx.bind((ip, 0))
                 else:
                     tx = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
