@@ -1,0 +1,30 @@
+{{- if .Values.monitoring.podMonitor.enabled }}
+{{- if not .Values.metrics.enabled }}
+{{- fail "monitoring.podMonitor.enabled requires metrics.enabled" }}
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "multicast-relay.fullname" . }}
+  namespace: {{ default (include "multicast-relay.namespace" .) .Values.monitoring.podMonitor.namespace }}
+  labels:
+    {{- include "multicast-relay.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  podMetricsEndpoints:
+    - port: metrics
+      path: {{ .Values.monitoring.podMonitor.path }}
+      interval: {{ .Values.monitoring.podMonitor.interval }}
+      {{- with .Values.monitoring.podMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames:
+      - {{ include "multicast-relay.namespace" . }}
+  selector:
+    matchLabels:
+      {{- include "multicast-relay.selectorLabels" . | nindent 6 }}
+{{- end }}
