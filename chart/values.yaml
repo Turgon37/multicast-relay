@@ -9,7 +9,7 @@ strategy:
 
 image:
   repository: ghcr.io/turgon37/multicast-relay
-  tag: sha-16e976f
+  tag: sha-8e5c648
   pullPolicy: IfNotPresent
 
 relay:
