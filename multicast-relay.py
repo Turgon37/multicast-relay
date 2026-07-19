@@ -73,6 +73,54 @@ class Logger():
         else:
             print(args, kwargs)
 
+class Metrics():
+    def __init__(self, port):
+        self.enabled = port is not None
+        if not self.enabled:
+            return
+
+        try:
+            from prometheus_client import Counter, Gauge, start_http_server
+        except ImportError:
+            raise RuntimeError('--metrics-port requires the prometheus-client package')
+
+        self.port = port
+        self.startHttpServer = start_http_server
+        self.packetsReceived = Counter('multicast_relay_packets_received_total',
+                                       'Packets received by the relay.', ['source'])
+        self.packetsRelayed = Counter('multicast_relay_packets_relayed_total',
+                                      'Packets successfully relayed by the relay.', ['destination'])
+        self.packetsDropped = Counter('multicast_relay_packets_dropped_total',
+                                      'Packets dropped by the relay.', ['reason'])
+        self.transmissionErrors = Counter('multicast_relay_packet_transmission_errors_total',
+                                          'Packet transmission errors.', ['destination'])
+        self.remoteConnections = Gauge('multicast_relay_remote_connections',
+                                       'Active remote relay connections.')
+
+    def start(self):
+        if self.enabled:
+            self.startHttpServer(self.port)
+
+    def packetReceived(self, source):
+        if self.enabled:
+            self.packetsReceived.labels(source).inc()
+
+    def packetRelayed(self, destination):
+        if self.enabled:
+            self.packetsRelayed.labels(destination).inc()
+
+    def packetDropped(self, reason):
+        if self.enabled:
+            self.packetsDropped.labels(reason).inc()
+
+    def packetTransmissionError(self, destination):
+        if self.enabled:
+            self.transmissionErrors.labels(destination).inc()
+
+    def setRemoteConnections(self, connections):
+        if self.enabled:
+            self.remoteConnections.set(connections)
+
 class Netifaces():
     def __init__(self, homebrewNetifaces, ifNameStructLen):
         self.homebrewNetifaces = homebrewNetifaces
@@ -186,7 +234,7 @@ class PacketRelay():
     def __init__(self, interfaces, noTransmitInterfaces, ifFilter, waitForIP, ttl,
                  oneInterface, homebrewNetifaces, ifNameStructLen, allowNonEther,
                  ssdpUnicastAddr, mdnsForceUnicast, masquerade, listen, remote,
-                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, logger):
+                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, logger, metrics):
         self.interfaces = interfaces
         self.noTransmitInterfaces = noTransmitInterfaces or []
 
@@ -207,6 +255,7 @@ class PacketRelay():
 
         self.nif = Netifaces(homebrewNetifaces, ifNameStructLen)
         self.logger = logger
+        self.metrics = metrics
 
         self.transmitters = []
         self.receivers = []
@@ -242,6 +291,7 @@ class PacketRelay():
         self.debug = debug
 
         self.remoteConnections = []
+        self.metrics.setRemoteConnections(0)
 
         if self.listenAddr:
             self.listenSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -269,6 +319,7 @@ class PacketRelay():
             except socket.error as e:
                 if e.errno == errno.EINPROGRESS:
                     remote['socket'] = remoteConnection
+                    self.metrics.setRemoteConnections(len(self.remoteSockets()))
                 else:
                     remote['connecting'] = False
                     remote['connectFailure'] = time.time()
@@ -276,6 +327,7 @@ class PacketRelay():
     def removeConnection(self, s):
         if s in self.remoteConnections:
             self.remoteConnections.remove(s)
+            self.metrics.setRemoteConnections(len(self.remoteSockets()))
             return
 
         for remote in self.remoteAddrs:
@@ -283,6 +335,7 @@ class PacketRelay():
                 remote['socket'] = None
                 remote['connecting'] = False
                 remote['connectFailure'] = time.time()
+                self.metrics.setRemoteConnections(len(self.remoteSockets()))
 
     def remoteSockets(self):
         return self.remoteConnections + list(map(lambda remote: remote['socket'], filter(lambda remote: remote['socket'], self.remoteAddrs)))
@@ -589,6 +642,10 @@ class PacketRelay():
                     raise
                 else:
                     self.logger.info('Error sending packet: %s' % str(e))
+                    self.metrics.packetTransmissionError('local')
+                    return False
+
+        return True
 
     @staticmethod
     def transmitUdpPacket(sock, ipHeaderLength, ipPacket):
@@ -639,6 +696,7 @@ class PacketRelay():
                         remoteConnection.close()
                     else:
                         self.remoteConnections.append(remoteConnection)
+                        self.metrics.setRemoteConnections(len(self.remoteSockets()))
                         self.logger.info('REMOTE: Accepted connection from %s' % remoteAddr[0])
                     continue
                 else:
@@ -683,6 +741,8 @@ class PacketRelay():
                         (data, addr) = s.recvfrom(10240)
                         addr = addr[0]
 
+                self.metrics.packetReceived(receivingInterface)
+
                 eighthDataByte = data[8]
                 if sys.version_info > (3, 0):
                     eighthDataByte = bytes([data[8]])
@@ -700,6 +760,7 @@ class PacketRelay():
                 # using an RAW socket.
                 ipChecksum = struct.unpack('!H', data[10:12])[0]
                 if ipChecksum in self.recentChecksums:
+                    self.metrics.packetDropped('duplicate')
                     continue
 
                 srcAddr = socket.inet_ntoa(data[12:16])
@@ -717,6 +778,7 @@ class PacketRelay():
                 dstPort = struct.unpack('!H', data[ipHeaderLength+2:ipHeaderLength+4])[0]
 
                 if receivingInterface == 'local' and self.isOwnUdpPacket(srcAddr, srcPort):
+                    self.metrics.packetDropped('own_udp_packet')
                     continue
 
                 if self.debug and PacketRelay.isMulticast(dstAddr):
@@ -724,6 +786,7 @@ class PacketRelay():
 
                 # raw sockets cannot be bound to a specific port, so we receive all UDP packets with matching dstAddr
                 if receivingInterface == 'local' and not self.match(dstAddr, dstPort):
+                    self.metrics.packetDropped('unmatched_destination')
                     continue
 
                 if self.remoteSockets() and not (receivingInterface == 'remote' and self.noRemoteRelay) and srcAddr != self.ssdpUnicastAddr:
@@ -733,6 +796,7 @@ class PacketRelay():
                             continue
                         try:
                             remoteConnection.sendall(struct.pack('!H', len(packet)) + packet)
+                            self.metrics.packetRelayed('remote')
                             if self.debug:
                                 self.logger.debug('Forwarded packet to remote received on %s: %s' % (receivingInterface, PacketRelay.packetDescription(data)))
 
@@ -745,6 +809,7 @@ class PacketRelay():
                                 pass
                             else:
                                 self.logger.info('REMOTE: Failed to connect to %s: %s' % (self.remoteAddr, str(e)))
+                                self.metrics.packetTransmissionError('remote')
                                 self.removeConnection(remoteConnection)
                                 continue
 
@@ -855,8 +920,11 @@ class PacketRelay():
                         try:
                             if self.udp:
                                 self.transmitUdpPacket(tx['socket'], ipHeaderLength, data)
+                                transmitted = True
                             else:
-                                self.transmitPacket(tx['socket'], tx['mac'], destMac, ipHeaderLength, data)
+                                transmitted = self.transmitPacket(tx['socket'], tx['mac'], destMac, ipHeaderLength, data)
+                            if transmitted:
+                                self.metrics.packetRelayed('local')
                         except Exception as e:
                             if not self.udp and e.errno == errno.ENXIO:
                                 try:
@@ -867,9 +935,13 @@ class PacketRelay():
                                     tx['netmask'] = netmask
                                     tx['addr'] = ip
                                     tx['socket'] = s
-                                    self.transmitPacket(tx['socket'], tx['mac'], destMac, ipHeaderLength, data)
+                                    if self.transmitPacket(tx['socket'], tx['mac'], destMac, ipHeaderLength, data):
+                                        self.metrics.packetRelayed('local')
                                 except Exception as e:
                                     self.logger.info('Error sending packet: %s' % str(e))
+                                    self.metrics.packetTransmissionError('local')
+                            else:
+                                self.metrics.packetTransmissionError('local')
 
     def getInterface(self, interface):
         ifname = None
@@ -1079,6 +1151,8 @@ def main():
                         help='Encryption key for the connection to the remote multicast-relay.')
     parser.add_argument('--k8sport', type=int,
                         help='Run k8s liveness/readiness server on the given port.')
+    parser.add_argument('--metrics-port', type=int,
+                        help='Expose Prometheus metrics on the given port.')
     parser.add_argument('--foreground', action='store_true',
                         help='Do not background.')
     parser.add_argument('--logfile',
@@ -1109,6 +1183,10 @@ def main():
         os.close(sys.stdin.fileno())
 
     logger = Logger(args.foreground, args.logfile, args.verbose, args.debug)
+    metrics = Metrics(args.metrics_port)
+    if args.metrics_port is not None:
+        logger.info('Starting Prometheus metrics server on port %d' % args.metrics_port)
+        metrics.start()
 
     relays = set()
     if not args.noMDNS:
@@ -1146,7 +1224,8 @@ def main():
                               aes                  = args.aes,
                               debug                = args.debug,
                               udp                  = args.transmitUdp,
-                              logger               = logger)
+                              logger               = logger,
+                              metrics              = metrics)
 
     def stopHandler(signum, frame):
         logger.info('Received signal %d, stopping relay' % signum)
