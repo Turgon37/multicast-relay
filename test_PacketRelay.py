@@ -9,6 +9,8 @@
 
 import socket
 import struct
+import sys
+import types
 # We can't use import directly because of the hyphen in the file name,
 # so we do this via importlib
 import importlib
@@ -73,6 +75,56 @@ def test_stop_packet_relay():
     relay.stop()
 
     assert not relay.running
+
+
+def test_metrics_disabled():
+    metrics = mr.Metrics(None)
+
+    metrics.start()
+    metrics.packetReceived('local')
+    metrics.packetRelayed('local')
+    metrics.packetDropped('duplicate')
+    metrics.packetTransmissionError('local')
+    metrics.setRemoteConnections(0)
+
+
+def test_metrics_enabled():
+    createdMetrics = []
+    startedPorts = []
+
+    class Metric():
+        def labels(self, value):
+            return self
+
+        def inc(self):
+            pass
+
+        def set(self, value):
+            pass
+
+    client = types.ModuleType('prometheus_client')
+    client.Counter = lambda *args: createdMetrics.append(args) or Metric()
+    client.Gauge = lambda *args: createdMetrics.append(args) or Metric()
+    client.start_http_server = startedPorts.append
+    previousClient = sys.modules.get('prometheus_client')
+    sys.modules['prometheus_client'] = client
+
+    try:
+        metrics = mr.Metrics(9090)
+        metrics.start()
+        metrics.packetReceived('local')
+        metrics.packetRelayed('remote')
+        metrics.packetDropped('duplicate')
+        metrics.packetTransmissionError('local')
+        metrics.setRemoteConnections(1)
+    finally:
+        if previousClient:
+            sys.modules['prometheus_client'] = previousClient
+        else:
+            del sys.modules['prometheus_client']
+
+    assert startedPorts == [9090]
+    assert len(createdMetrics) == 5
 
 
 def test_net_checksum_ipv4():
