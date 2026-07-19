@@ -30,8 +30,6 @@ livenessPort: 10015
 metrics:
   enabled: false
   port: 9090
-
-monitoring:
   podMonitor:
     enabled: false
     namespace: ""
