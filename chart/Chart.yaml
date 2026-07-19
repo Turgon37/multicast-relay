@@ -2,8 +2,10 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.4
+version: 0.1.6
 appVersion: sha-8e5c648
+annotations:
+  artifacthub.io/license: MIT
 keywords:
   - multicast
   - network

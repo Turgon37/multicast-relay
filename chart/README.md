@@ -19,7 +19,7 @@ linting only and must not be used for deployment.
 Enable `networkPolicy` with the `kubernetes` or `cilium` flavor and provide its
 ingress/egress rules when network isolation is required.
 
-Set both `metrics.enabled` and `monitoring.podMonitor.enabled` to `true` to
+Set both `metrics.enabled` and `metrics.podMonitor.enabled` to `true` to
 create a Prometheus Operator `PodMonitor` targeting the relay's `/metrics`
 endpoint.
 
