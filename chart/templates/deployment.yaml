@@ -1,0 +1,139 @@
+{{- if not .Values.relay.interfaces }}
+{{- fail "relay.interfaces must contain at least one interface" }}
+{{- end }}
+{{- if and .Values.relay.remote.addresses (not .Values.relay.remote.port) }}
+{{- fail "relay.remote.port is required when relay.remote.addresses is set" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "multicast-relay.fullname" . }}
+  namespace: {{ include "multicast-relay.namespace" . }}
+  labels:
+    {{- include "multicast-relay.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ .Values.strategy.type }}
+  selector:
+    matchLabels:
+      {{- include "multicast-relay.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "multicast-relay.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      hostNetwork: {{ .Values.hostNetwork }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: {{ include "multicast-relay.name" . }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.metrics.enabled }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+          {{- end }}
+          args:
+            - --interfaces
+            {{- range .Values.relay.interfaces }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- with .Values.relay.noTransmitInterfaces }}
+            - --noTransmitInterfaces
+            {{- range . }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.relay.remote.addresses }}
+            - --remote
+            {{- range . }}
+            - {{ . | quote }}
+            {{- end }}
+            - --remotePort={{ $.Values.relay.remote.port }}
+            {{- end }}
+            - --k8sport={{ .Values.livenessPort }}
+            {{- if .Values.metrics.enabled }}
+            - --metrics-port={{ .Values.metrics.port }}
+            {{- end }}
+            {{- if .Values.relay.wait }}
+            - --wait
+            {{- end }}
+            {{- if .Values.relay.transmitUdp }}
+            - --transmitUdp
+            {{- end }}
+            {{- if .Values.relay.noRemoteRelay }}
+            - --noRemoteRelay
+            {{- end }}
+            {{- if .Values.relay.debug }}
+            - --debug
+            {{- end }}
+            {{- if .Values.relay.verbose }}
+            - --verbose
+            {{- end }}
+            {{- with .Values.relay.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.env .Values.extraEnv }}
+          env:
+            {{- range $name, $value := .Values.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.probes.liveness }}
+          {{- if .enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .path }}
+              port: {{ $.Values.livenessPort }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            successThreshold: {{ .successThreshold }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.probes.readiness }}
+          {{- if .enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .path }}
+              port: {{ $.Values.livenessPort }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            successThreshold: {{ .successThreshold }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

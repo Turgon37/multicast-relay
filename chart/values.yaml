@@ -1,0 +1,94 @@
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+
+replicaCount: 1
+
+strategy:
+  type: Recreate
+
+image:
+  repository: ghcr.io/turgon37/multicast-relay
+  tag: sha-16e976f
+  pullPolicy: IfNotPresent
+
+relay:
+  interfaces: []
+  noTransmitInterfaces: []
+  remote:
+    addresses: []
+    port: null
+  wait: false
+  transmitUdp: false
+  noRemoteRelay: false
+  verbose: false
+  debug: false
+  extraArgs: []
+
+livenessPort: 10015
+
+metrics:
+  enabled: false
+  port: 9090
+
+monitoring:
+  podMonitor:
+    enabled: false
+    namespace: ""
+    labels: {}
+    interval: 15s
+    scrapeTimeout: ""
+    path: /metrics
+
+env:
+  TZ: Europe/Paris
+
+extraEnv: []
+
+hostNetwork: true
+dnsPolicy: ClusterFirstWithHostNet
+terminationGracePeriodSeconds: 30
+
+podAnnotations: {}
+podLabels: {}
+
+containerSecurityContext:
+  capabilities:
+    add:
+      - NET_RAW
+      - NET_ADMIN
+
+resources: {}
+
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+    successThreshold: 1
+    failureThreshold: 3
+  readiness:
+    enabled: false
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+    successThreshold: 1
+    failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+networkPolicy:
+  enabled: false
+  flavor: kubernetes
+  policyTypes: []
+  ingress: []
+  egress: []
+  cilium:
+    ingress: []
+    egress: []
+    enableDefaultDeny: {}

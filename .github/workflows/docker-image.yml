@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - master
+    paths:
+      - Dockerfile
+      - multicast-relay.py
+      - openwrt-python-encodings/**
+      - .github/workflows/docker-image.yml
 
 permissions:
   contents: read
