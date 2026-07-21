@@ -15,7 +15,7 @@ Install the chart with the release name `multicast-relay`:
 helm upgrade --install multicast-relay multicast-relay/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.14 \
+  --version 0.1.15 \
   --set relay.interfaces[0]=eth0
 ```
 
@@ -26,7 +26,7 @@ helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.14 \
+  --version 0.1.15 \
   --set relay.interfaces[0]=eth0
 ```
 
