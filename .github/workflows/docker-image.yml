@@ -38,7 +38,7 @@ jobs:
         id: metadata
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/turgon37/multicast-relay
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}
@@ -60,4 +60,6 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       - name: Sign Docker image
-        run: cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes ghcr.io/turgon37/multicast-relay@${IMAGE_DIGEST}
