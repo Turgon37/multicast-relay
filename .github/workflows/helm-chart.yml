@@ -6,12 +6,18 @@ on:
       - master
     paths:
       - chart/**
+      - artifacthub-repo.yml
       - .github/workflows/helm-chart.yml
 
 permissions:
   contents: read
   id-token: write
+  pages: write
   packages: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   helm:
@@ -38,7 +44,12 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Package Helm chart
-        run: helm package chart --destination .helm
+        run: |
+          mkdir -p .helm public
+          helm package chart --destination .helm
+          cp .helm/multicast-relay-*.tgz public/
+          cp artifacthub-repo.yml public/
+          helm repo index public --url https://turgon37.github.io/multicast-relay
 
       - name: Push Helm chart as OCI artifact
         id: push
@@ -54,3 +65,22 @@ jobs:
 
       - name: Sign Helm chart
         run: cosign sign --yes ghcr.io/turgon37/charts/multicast-relay@${{ steps.push.outputs.digest }}
+
+      - name: Upload Helm repository to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy-pages:
+    needs: helm
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Helm repository to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
