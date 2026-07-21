@@ -2,13 +2,14 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.13
+version: 0.1.14
 appVersion: 1.0.0
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/links: |
     - name: Source code
       url: https://github.com/Turgon37/multicast-relay
+      icon: https://github.com/favicon.ico
     - name: Changelog
       url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
     - name: Container package
