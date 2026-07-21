@@ -1,92 +1,152 @@
+# Overrides the chart name used in resource names and labels.
 nameOverride: ""
+# Fully overrides the generated release resource name.
 fullnameOverride: ""
+# Overrides the Helm release namespace for chart resources.
 namespaceOverride: ""
 
+# Number of relay pods. Use 1 when host networking shares the same interface.
 replicaCount: 1
 
 strategy:
+  # Deployment strategy: Recreate or RollingUpdate.
   type: Recreate
 
 image:
+  # Container image repository.
   repository: ghcr.io/turgon37/multicast-relay
+  # Container image tag.
   tag: sha-8e5c648
+  # Kubernetes image pull policy.
   pullPolicy: IfNotPresent
 
 relay:
+  # Required interfaces passed to --interfaces.
   interfaces: []
+  # Listen-only interfaces passed to --noTransmitInterfaces.
   noTransmitInterfaces: []
   remote:
+    # Remote relay addresses passed to --remote.
     addresses: []
+    # Required remote relay port when remote addresses are set.
     port: null
+  # Adds --wait to wait for interface IPv4 addresses.
   wait: false
+  # Adds --transmitUdp instead of using raw sockets for transmission.
   transmitUdp: false
+  # Adds --noRemoteRelay.
   noRemoteRelay: false
+  # Adds --verbose.
   verbose: false
+  # Adds --debug.
   debug: false
+  # Additional relay arguments not exposed as dedicated values.
   extraArgs: []
 
+# Port used for --k8sport and HTTP liveness/readiness probes.
 livenessPort: 10015
 
 metrics:
+  # Adds --metrics-port and exposes the named container port metrics.
   enabled: false
+  # Prometheus metrics port.
   port: 9090
   podMonitor:
+    # Creates a Prometheus Operator PodMonitor; requires metrics.enabled.
     enabled: false
+    # Namespace containing the PodMonitor; defaults to the release namespace.
     namespace: ""
+    # Additional labels for the PodMonitor.
     labels: {}
+    # Prometheus scrape interval.
     interval: 15s
+    # Optional Prometheus scrape timeout.
     scrapeTimeout: ""
+    # Metrics HTTP path.
     path: /metrics
 
+# Environment variables added to the relay container.
 env:
   TZ: Europe/Paris
-
+# Additional complete Kubernetes environment variable entries.
 extraEnv: []
 
+# Enables host networking for multicast packet reception and emission.
 hostNetwork: true
+# Pod DNS policy.
 dnsPolicy: ClusterFirstWithHostNet
+# Grace period Kubernetes gives the relay after SIGTERM.
 terminationGracePeriodSeconds: 30
 
+# Annotations added to the pod.
 podAnnotations: {}
+# Labels added to the pod.
 podLabels: {}
 
+# Container security context. Raw socket capabilities are required by default.
 containerSecurityContext:
   capabilities:
     add:
       - NET_RAW
       - NET_ADMIN
 
+# Kubernetes resource requests and limits.
 resources: {}
 
 probes:
   liveness:
+    # Enables the HTTP liveness probe on livenessPort.
     enabled: true
+    # Liveness probe HTTP path.
     path: /
+    # Delay before the liveness probe starts.
     initialDelaySeconds: 10
+    # Liveness probe period.
     periodSeconds: 10
+    # Liveness probe timeout.
     timeoutSeconds: 2
+    # Consecutive liveness successes required.
     successThreshold: 1
+    # Consecutive liveness failures before restart.
     failureThreshold: 3
   readiness:
+    # Enables the HTTP readiness probe on livenessPort.
     enabled: false
+    # Readiness probe HTTP path.
     path: /
+    # Delay before the readiness probe starts.
     initialDelaySeconds: 10
+    # Readiness probe period.
     periodSeconds: 10
+    # Readiness probe timeout.
     timeoutSeconds: 2
+    # Consecutive readiness successes required.
     successThreshold: 1
+    # Consecutive readiness failures before unready.
     failureThreshold: 3
 
+# Node selector for pod scheduling.
 nodeSelector: {}
+# Tolerations for pod scheduling.
 tolerations: []
+# Affinity and anti-affinity rules.
 affinity: {}
 
 networkPolicy:
+  # Creates a network policy for the relay pods.
   enabled: false
+  # Policy implementation: kubernetes or cilium.
   flavor: kubernetes
+  # Explicit Kubernetes policy types; inferred from ingress/egress when empty.
   policyTypes: []
+  # Kubernetes NetworkPolicy ingress rules.
   ingress: []
+  # Kubernetes NetworkPolicy egress rules.
   egress: []
   cilium:
+    # Cilium ingress rules.
     ingress: []
+    # Cilium egress rules.
     egress: []
+    # Cilium default-deny settings.
     enableDefaultDeny: {}

@@ -1,1 +1,5 @@
+# from https://github.com/artifacthub/hub/blob/master/docs/metadata/artifacthub-repo.yml
 repositoryID: fa0cc67c-f0c0-47a0-9c5c-7751f881b462
+owners:
+- name: Pierre GINDRAUD
+  email: pgindraud@gmail.com
