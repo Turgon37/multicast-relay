@@ -1,6 +1,12 @@
 Relay broadcast and multicast packets between interfaces
 --------------------------------------------------------
 
+[![Docker image](https://github.com/Turgon37/multicast-relay/actions/workflows/docker-image.yml/badge.svg)](https://github.com/Turgon37/multicast-relay/actions/workflows/docker-image.yml)
+[![Helm chart](https://github.com/Turgon37/multicast-relay/actions/workflows/helm-chart.yml/badge.svg)](https://github.com/Turgon37/multicast-relay/actions/workflows/helm-chart.yml)
+[![License](https://img.shields.io/github/license/Turgon37/multicast-relay)](https://github.com/Turgon37/multicast-relay/blob/master/LICENSE)
+
+See the [changelog](CHANGELOG.md) for the relay history and release notes.
+
 Useful, for example, if you have Sonos speakers on one interface, or VLAN,
 and you want to be able to control them from devices on a different
 interface/VLAN. Similar for Chromecast devices.
