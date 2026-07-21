@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   packages: write
 
 jobs:
@@ -26,6 +27,13 @@ jobs:
         run: helm lint chart --values chart/ci/lint-values.yaml
 
       - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Helm registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
 
@@ -33,4 +41,16 @@ jobs:
         run: helm package chart --destination .helm
 
       - name: Push Helm chart as OCI artifact
-        run: helm push .helm/multicast-relay-*.tgz oci://ghcr.io/turgon37/charts
+        id: push
+        run: |
+          output=$(helm push .helm/multicast-relay-*.tgz oci://ghcr.io/turgon37/charts)
+          echo "$output"
+          digest=$(echo "$output" | sed -n 's/^Digest: //p')
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign Helm chart
+        run: cosign sign --yes ghcr.io/turgon37/charts/multicast-relay@${{ steps.push.outputs.digest }}
