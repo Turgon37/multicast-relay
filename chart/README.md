@@ -35,7 +35,7 @@ endpoint.
 | `replicaCount` | int | `1` | Number of relay pods. Use `1` when host networking shares the same interface. |
 | `strategy.type` | string | `"Recreate"` | Deployment strategy; `Recreate` or `RollingUpdate`. |
 | `image.repository` | string | `"ghcr.io/turgon37/multicast-relay"` | Container image repository. |
-| `image.tag` | string | `"sha-8e5c648"` | Container image tag. |
+| `image.tag` | string | `"1.0.0"` | Container image tag. |
 | `image.pullPolicy` | string | `"IfNotPresent"` | Kubernetes image pull policy. |
 | `relay.interfaces` | list | `[]` | Required interfaces passed to `--interfaces`. |
 | `relay.noTransmitInterfaces` | list | `[]` | Listen-only interfaces passed to `--noTransmitInterfaces`. |
