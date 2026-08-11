@@ -2,7 +2,7 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.15
+version: 0.1.16
 appVersion: 1.0.0
 annotations:
   artifacthub.io/license: MIT
@@ -18,17 +18,13 @@ annotations:
     - name: multicast-relay
       image: ghcr.io/turgon37/multicast-relay:1.0.0
   artifacthub.io/changes: |
-    - kind: added
-      description: Add configurable Helm deployment with host networking and Kubernetes probes.
+    - kind: changed
+      description: Stop publishing the Helm chart repository on GitHub Pages.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
-    - kind: added
-      description: Add Prometheus metrics and Prometheus Operator PodMonitor support.
-    - kind: added
-      description: Add Kubernetes and Cilium network policy support.
-    - kind: added
-      description: Publish Helm chart artifacts through OCI and HTTP repositories.
+    - kind: changed
+      description: Publish the Helm chart exclusively as an OCI artifact on GHCR.
 keywords:
   - multicast
   - network

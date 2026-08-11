@@ -2,31 +2,16 @@
 
 ## Installing the Chart
 
-Add the multicast-relay Helm repository:
+The chart is published only as an OCI artifact on GHCR.
 
-```console
-helm repo add multicast-relay https://turgon37.github.io/multicast-relay
-helm repo update
-```
-
-Install the chart with the release name `multicast-relay`:
-
-```console
-helm upgrade --install multicast-relay multicast-relay/multicast-relay \
-  --namespace prod-multicastrelay \
-  --create-namespace \
-  --version 0.1.15 \
-  --set relay.interfaces[0]=eth0
-```
-
-The chart is also available as an OCI artifact:
+Install the chart with the release name `multicast-relay` from GHCR:
 
 ```console
 helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.15 \
+  --version 0.1.16 \
   --set relay.interfaces[0]=eth0
 ```
 
