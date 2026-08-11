@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.16] - 2026-08-11
+
+Chart version `0.1.16`, using multicast-relay image version `1.0.0`.
+
+- Stop publishing the Helm chart repository on GitHub Pages.
+- Publish the Helm chart exclusively as an OCI artifact on GHCR.
+
 ## [0.1.15] - 2026-07-21
 
 Chart version `0.1.15`, using multicast-relay image version `1.0.0`.
@@ -22,4 +29,3 @@ Chart version `0.1.15`, using multicast-relay image version `1.0.0`.
 - Add Alpine-based Docker image, Helm OCI publication and Cosign signatures.
 - Add GitHub Pages HTTP Helm repository and Artifact Hub metadata.
 - Add Artifact Hub links, container image metadata and per-release changes.
-
