@@ -66,4 +66,4 @@ jobs:
       - name: Sign Docker image
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-        run: cosign sign --yes ghcr.io/turgon37/multicast-relay@${IMAGE_DIGEST}
+        run: cosign sign --yes "ghcr.io/turgon37/multicast-relay@${IMAGE_DIGEST}"
