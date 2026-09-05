@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.17] - 2026-09-05
+
+Chart version `0.1.17`, using multicast-relay image version `1.0.0`.
+
+- Add the `--receiveUdp` option to receive multicast packets through UDP sockets.
+- Expose the `receiveUdp` relay option in the Helm chart values and deployment template.
+
 ## [0.1.16] - 2026-08-11
 
 Chart version `0.1.16`, using multicast-relay image version `1.0.0`.

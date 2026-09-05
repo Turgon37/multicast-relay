@@ -34,6 +34,8 @@ relay:
   wait: false
   # Adds --transmitUdp instead of using raw sockets for transmission.
   transmitUdp: false
+  # Adds --receiveUdp to receive multicast traffic through UDP sockets.
+  receiveUdp: false
   # Adds --noRemoteRelay.
   noRemoteRelay: false
   # Adds --verbose.

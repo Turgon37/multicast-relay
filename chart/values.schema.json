@@ -109,6 +109,9 @@
         "transmitUdp": {
           "type": "boolean"
         },
+        "receiveUdp": {
+          "type": "boolean"
+        },
         "noRemoteRelay": {
           "type": "boolean"
         },
@@ -131,6 +134,7 @@
         "remote",
         "wait",
         "transmitUdp",
+        "receiveUdp",
         "noRemoteRelay",
         "verbose",
         "debug",
