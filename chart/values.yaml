@@ -16,7 +16,7 @@ image:
   # Container image repository.
   repository: ghcr.io/turgon37/multicast-relay
   # Container image tag.
-  tag: 1.0.1
+  tag: 1.0.2
   # Kubernetes image pull policy.
   pullPolicy: IfNotPresent
 

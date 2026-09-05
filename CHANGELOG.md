@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.19] - 2026-09-06
+
+Chart version `0.1.19`, using multicast-relay image version `1.0.2`.
+
+- Add startup logs showing the receive socket type configured for each relay listener.
+- Add startup logs showing the transmit socket type configured for each interface.
+
 ## [0.1.18] - 2026-09-06
 
 Chart version `0.1.18`, using multicast-relay image version `1.0.1`.
