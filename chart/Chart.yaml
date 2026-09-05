@@ -2,8 +2,8 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.17
-appVersion: 1.0.0
+version: 0.1.18
+appVersion: 1.0.1
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/links: |
@@ -16,15 +16,15 @@ annotations:
       url: https://github.com/Turgon37/multicast-relay/pkgs/container/multicast-relay
   artifacthub.io/images: |
     - name: multicast-relay
-      image: ghcr.io/turgon37/multicast-relay:1.0.0
+      image: ghcr.io/turgon37/multicast-relay:1.0.1
   artifacthub.io/changes: |
     - kind: changed
-      description: Add an option to receive multicast packets through UDP sockets instead of raw sockets.
+      description: Align the chart with the application image version that includes the receiveUdp option.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
     - kind: changed
-      description: Expose the new receiveUdp relay option in the Helm chart values.
+      description: Default the chart to multicast-relay image version 1.0.1.
 keywords:
   - multicast
   - network

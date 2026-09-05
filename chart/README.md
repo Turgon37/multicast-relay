@@ -11,7 +11,7 @@ helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.17 \
+  --version 0.1.18 \
   --set relay.interfaces[0]=eth0
 ```
 

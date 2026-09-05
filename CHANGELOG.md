@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.18] - 2026-09-06
+
+Chart version `0.1.18`, using multicast-relay image version `1.0.1`.
+
+- Align the chart with the application image version that includes the `--receiveUdp` option.
+- Default the chart image tag and metadata to multicast-relay `1.0.1`.
+
 ## [0.1.17] - 2026-09-05
 
 Chart version `0.1.17`, using multicast-relay image version `1.0.0`.
