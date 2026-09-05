@@ -7,7 +7,7 @@ on:
     paths:
       - chart/**
       - artifacthub-repo.yml
-      - .github/workflows/helm-chart.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,11 +15,11 @@ permissions:
   packages: write
 
 jobs:
-  tests:
-    uses: ./.github/workflows/python-tests.yml
+  validate:
+    uses: ./.github/workflows/ci.yml
 
   helm:
-    needs: tests
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
