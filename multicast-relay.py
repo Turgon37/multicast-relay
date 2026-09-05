@@ -450,21 +450,59 @@ class PacketRelay():
         return ip2mac.get(ip, None)
 
     @staticmethod
+    def unicast_ip2mac_str(ip, proc_net_arp_content=None):
+        return PacketRelay.unicastIpToMac(ip, procNetArp=proc_net_arp_content)
+
+    @staticmethod
+    def net_checksum(data):
+        if isinstance(data, str):
+            data = data.encode('latin-1')
+
+        if len(data) % 2:
+            data += struct.pack('x')
+
+        checksum = 0
+        for i in range(0, len(data), 2):
+            checksum += struct.unpack('!H', data[i:i+2])[0]
+
+        while checksum > 0xffff:
+            checksum = (checksum & 0xffff) + ((checksum - (checksum & 0xffff)) >> 16)
+
+        return ~checksum & 0xffff
+
+    @staticmethod
     def modifyUdpPacket(data, ipHeaderLength, srcAddr=None, srcPort=None, dstAddr=None, dstPort=None):
+        stringInput = isinstance(data, str)
+        if stringInput:
+            data = data.encode('latin-1')
+
         srcAddr = srcAddr if srcAddr else socket.inet_ntoa(data[12:16])
         dstAddr = dstAddr if dstAddr else socket.inet_ntoa(data[16:20])
 
         srcPort = srcPort if srcPort else struct.unpack('!H', data[ipHeaderLength+0:ipHeaderLength+2])[0]
         dstPort = dstPort if dstPort else struct.unpack('!H', data[ipHeaderLength+2:ipHeaderLength+4])[0]
 
-        # Recreate the packet
-        ipHeader = data[:ipHeaderLength-8] + socket.inet_aton(srcAddr) + socket.inet_aton(dstAddr)
-
         udpData = data[ipHeaderLength+8:]
         udpLength = 8 + len(udpData)
+        totalLength = ipHeaderLength + udpLength
+        ipHeader = data[:2] + struct.pack('!H', totalLength) + data[4:10] + struct.pack('!H', 0) \
+            + socket.inet_aton(srcAddr) + socket.inet_aton(dstAddr) + data[20:ipHeaderLength]
         udpHeader = struct.pack('!4H', srcPort, dstPort, udpLength, 0)
+        udpHeader = PacketRelay.computeUDPChecksum(ipHeader, udpHeader, udpData)
+        ipChecksum = PacketRelay.net_checksum(ipHeader)
+        packet = ipHeader[:10] + struct.pack('!H', ipChecksum) + ipHeader[12:] + udpHeader + udpData
 
-        return ipHeader + udpHeader + udpData
+        if stringInput:
+            return packet.decode('latin-1')
+        return packet
+
+    @staticmethod
+    def modify_udp_packet(data, ipHeaderLength, newSrcAddr=None, newSrcPort=None, newDstAddr=None, newDstPort=None):
+        return PacketRelay.modifyUdpPacket(data, ipHeaderLength,
+                                           srcAddr=newSrcAddr,
+                                           srcPort=newSrcPort,
+                                           dstAddr=newDstAddr,
+                                           dstPort=newDstPort)
 
     @staticmethod
     def dnsName(data, offset):
