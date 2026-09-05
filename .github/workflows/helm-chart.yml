@@ -15,7 +15,11 @@ permissions:
   packages: write
 
 jobs:
+  tests:
+    uses: ./.github/workflows/python-tests.yml
+
   helm:
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
