@@ -234,7 +234,7 @@ class PacketRelay():
     def __init__(self, interfaces, noTransmitInterfaces, ifFilter, waitForIP, ttl,
                  oneInterface, homebrewNetifaces, ifNameStructLen, allowNonEther,
                  ssdpUnicastAddr, mdnsForceUnicast, masquerade, listen, remote,
-                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, logger, metrics):
+                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, receiveUdp, logger, metrics):
         self.interfaces = interfaces
         self.noTransmitInterfaces = noTransmitInterfaces or []
 
@@ -251,6 +251,7 @@ class PacketRelay():
         self.allowNonEther = allowNonEther
         self.masquerade = masquerade or []
         self.udp = udp
+        self.receiveUdp = receiveUdp
         self.running = True
 
         self.nif = Netifaces(homebrewNetifaces, ifNameStructLen)
@@ -259,6 +260,7 @@ class PacketRelay():
 
         self.transmitters = []
         self.receivers = []
+        self.receiverMetadata = {}
         self.etherAddrs = {}
         self.etherType = struct.pack('!H', 0x0800)
         self.udpMaxLength = 1458
@@ -359,8 +361,16 @@ class PacketRelay():
         # fun, one receiving socket for each network interface, if we're
         # intercepting broadcast packets.
         if self.isMulticast(addr):
-            rx = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
-            rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if self.receiveUdp:
+                rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+                if hasattr(socket, 'IP_RECVTTL'):
+                    rx.setsockopt(socket.IPPROTO_IP, socket.IP_RECVTTL, 1)
+                rx.bind(('0.0.0.0', port))
+            else:
+                rx = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
+                rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         for interface in self.interfaces:
             (ifname, mac, ip, netmask, broadcast) = self.getInterface(interface)
@@ -406,8 +416,11 @@ class PacketRelay():
                 self.transmitters.append({'relay': {'addr': listenIP, 'port': port}, 'interface': ifname, 'addr': ip, 'mac': mac, 'netmask': netmask, 'broadcast': broadcast, 'socket': tx, 'sourcePort': sourcePort, 'service': service})
 
         if self.isMulticast(addr):
-            rx.bind((addr, port))
             self.receivers.append(rx)
+            if self.receiveUdp:
+                self.receiverMetadata[rx] = {'udp': True, 'addr': addr, 'port': port}
+            else:
+                rx.bind((addr, port))
         self.bindings.add((addr, port))
 
     @staticmethod
@@ -568,7 +581,8 @@ class PacketRelay():
 
         return headers + udpData
 
-    def computeIPChecksum(self, data, ipHeaderLength):
+    @staticmethod
+    def calculateIPChecksum(data, ipHeaderLength):
         # Zero out current checksum
         data = data[:10] + struct.pack('!H', 0) + data[12:]
 
@@ -580,11 +594,16 @@ class PacketRelay():
         while checksum > 0xffff:
             checksum = (checksum & 0xffff) + ((checksum - (checksum & 0xffff)) >> 16)
 
-        checksum = ~checksum & 0xffff
+        return ~checksum & 0xffff
+
+    def rememberIPChecksum(self, checksum):
         self.recentChecksums.append(checksum)
         if len(self.recentChecksums) > 256:
             self.recentChecksums = self.recentChecksums[1:]
 
+    def computeIPChecksum(self, data, ipHeaderLength):
+        checksum = PacketRelay.calculateIPChecksum(data, ipHeaderLength)
+        self.rememberIPChecksum(checksum)
         return data[:10] + struct.pack('!H', checksum) + data[12:]
 
     @staticmethod
@@ -655,6 +674,60 @@ class PacketRelay():
         if PacketRelay.isMulticast(dstAddr):
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ipPacket[8])
         sock.sendto(udpData, (dstAddr, dstPort))
+
+    @staticmethod
+    def buildUdpIpPacket(srcAddr, srcPort, dstAddr, dstPort, udpData, ttl):
+        ipHeaderLength = 20
+        udpLength = 8 + len(udpData)
+        totalLength = ipHeaderLength + udpLength
+        ipHeader = struct.pack('!BBHHHBBH4s4s',
+                               0x45,
+                               0,
+                               totalLength,
+                               0,
+                               0,
+                               ttl,
+                               socket.IPPROTO_UDP,
+                               0,
+                               socket.inet_aton(srcAddr),
+                               socket.inet_aton(dstAddr))
+        udpHeader = struct.pack('!4H', srcPort, dstPort, udpLength, 0)
+        udpHeader = PacketRelay.computeUDPChecksum(ipHeader, udpHeader, udpData)
+        checksum = PacketRelay.calculateIPChecksum(ipHeader + udpHeader + udpData, ipHeaderLength)
+        ipHeader = ipHeader[:10] + struct.pack('!H', checksum) + ipHeader[12:]
+        return ipHeader + udpHeader + udpData
+
+    @staticmethod
+    def unpackReceivedTTL(ancdata):
+        recvTtlTypes = [getattr(socket, 'IP_TTL', None), getattr(socket, 'IP_RECVTTL', None)]
+        recvTtlTypes = [cmsgType for cmsgType in recvTtlTypes if cmsgType is not None]
+
+        for level, cmsgType, cmsgData in ancdata:
+            if level != socket.IPPROTO_IP or cmsgType not in recvTtlTypes:
+                continue
+            if len(cmsgData) >= struct.calcsize('i'):
+                return struct.unpack('i', cmsgData[:struct.calcsize('i')])[0]
+            if cmsgData:
+                return struct.unpack('B', cmsgData[:1])[0]
+        return 1
+
+    @staticmethod
+    def receiveUdpPacket(sock, dstAddr, dstPort):
+        ancbufsize = 0
+        if hasattr(socket, 'CMSG_SPACE'):
+            ancbufsize = socket.CMSG_SPACE(struct.calcsize('i'))
+
+        if hasattr(sock, 'recvmsg'):
+            (udpData, ancdata, _, addr) = sock.recvmsg(10240, ancbufsize)
+            ttl = PacketRelay.unpackReceivedTTL(ancdata)
+        else:
+            (udpData, addr) = sock.recvfrom(10240)
+            ttl = 1
+
+        srcAddr = addr[0]
+        srcPort = addr[1]
+        ipPacket = PacketRelay.buildUdpIpPacket(srcAddr, srcPort, dstAddr, dstPort, udpData, ttl)
+        return (ipPacket, srcAddr)
 
     def match(self, addr, port):
         return ((addr, port)) in self.bindings
@@ -738,8 +811,12 @@ class PacketRelay():
 
                     else:
                         receivingInterface = 'local'
-                        (data, addr) = s.recvfrom(10240)
-                        addr = addr[0]
+                        receiverMetadata = self.receiverMetadata.get(s)
+                        if receiverMetadata and receiverMetadata.get('udp'):
+                            (data, addr) = self.receiveUdpPacket(s, receiverMetadata['addr'], receiverMetadata['port'])
+                        else:
+                            (data, addr) = s.recvfrom(10240)
+                            addr = addr[0]
 
                 self.metrics.packetReceived(receivingInterface)
 
@@ -1131,6 +1208,8 @@ def main():
                         help='Allow non-ethernet interfaces to be configured.')
     parser.add_argument('--transmitUdp', action='store_true',
                         help='Transmit packets using UDP sockets instead of raw packet sockets.')
+    parser.add_argument('--receiveUdp', action='store_true',
+                        help='Receive multicast packets using UDP sockets instead of raw packet sockets.')
     parser.add_argument('--masquerade', nargs='+',
                         help='Masquerade outbound packets from these interface(s).')
     parser.add_argument('--wait', action='store_true',
@@ -1224,6 +1303,7 @@ def main():
                               aes                  = args.aes,
                               debug                = args.debug,
                               udp                  = args.transmitUdp,
+                              receiveUdp           = args.receiveUdp,
                               logger               = logger,
                               metrics              = metrics)
 

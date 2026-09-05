@@ -58,6 +58,27 @@ def test_transmit_udp_packet():
     assert udpSocket.options == [(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 64)]
 
 
+def test_receive_udp_packet():
+    class UdpSocket():
+        def recvmsg(self, bufsize, ancbufsize):
+            return (
+                b'hello',
+                [(socket.IPPROTO_IP, getattr(socket, 'IP_TTL', 2), struct.pack('i', 64))],
+                0,
+                ('10.0.0.1', 43210),
+            )
+
+    packet, srcAddr = mr.PacketRelay.receiveUdpPacket(UdpSocket(), '224.0.0.251', 5353)
+
+    assert srcAddr == '10.0.0.1'
+    assert socket.inet_ntoa(packet[12:16]) == '10.0.0.1'
+    assert socket.inet_ntoa(packet[16:20]) == '224.0.0.251'
+    assert packet[8] == 64
+    assert struct.unpack('!H', packet[20:22])[0] == 43210
+    assert struct.unpack('!H', packet[22:24])[0] == 5353
+    assert packet[28:] == b'hello'
+
+
 def test_is_own_udp_packet():
     relay = mr.PacketRelay.__new__(mr.PacketRelay)
     relay.udp = True

@@ -11,7 +11,7 @@ helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.16 \
+  --version 0.1.17 \
   --set relay.interfaces[0]=eth0
 ```
 
@@ -58,6 +58,7 @@ endpoint.
 | `relay.remote.port` | int or null | `null` | Required remote relay port when `relay.remote.addresses` is set. |
 | `relay.wait` | bool | `false` | Adds `--wait` to wait for interface IPv4 addresses. |
 | `relay.transmitUdp` | bool | `false` | Adds `--transmitUdp` instead of using raw sockets for transmission. |
+| `relay.receiveUdp` | bool | `false` | Adds `--receiveUdp` to receive multicast traffic through UDP sockets. |
 | `relay.noRemoteRelay` | bool | `false` | Adds `--noRemoteRelay`. |
 | `relay.verbose` | bool | `false` | Adds `--verbose`. |
 | `relay.debug` | bool | `false` | Adds `--debug`. |
