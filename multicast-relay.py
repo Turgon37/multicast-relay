@@ -343,6 +343,15 @@ class PacketRelay():
         return self.remoteConnections + list(map(lambda remote: remote['socket'], filter(lambda remote: remote['socket'], self.remoteAddrs)))
 
     def addListener(self, addr, port, service):
+        if self.isMulticast(addr):
+            receiveSocketType = self.receiveUdp and 'udp' or 'raw'
+        else:
+            receiveSocketType = 'raw'
+        self.logger.info('Configuring %s receive socket for %s:%s%s' % (receiveSocketType,
+                                                                        addr,
+                                                                        port,
+                                                                        service and ' (%s)' % service or ''))
+
         if self.isBroadcast(addr):
             self.etherAddrs[addr] = self.broadcastIpToMac(addr)
         elif self.isMulticast(addr):
@@ -402,6 +411,12 @@ class PacketRelay():
             # Generate a transmitter socket. Each interface
             # requires its own transmitting socket.
             if interface not in self.noTransmitInterfaces:
+                transmitSocketType = self.udp and 'udp' or 'raw'
+                self.logger.info('Configuring %s transmit socket on %s for %s:%s%s' % (transmitSocketType,
+                                                                                        ifname,
+                                                                                        listenIP,
+                                                                                        port,
+                                                                                        service and ' (%s)' % service or ''))
                 sourcePort = None
                 if self.udp:
                     tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
