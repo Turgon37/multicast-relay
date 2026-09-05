@@ -7,6 +7,9 @@
 - Increment `version` in `chart/Chart.yaml` before publishing a modified chart.
 - Add or update the corresponding versioned entry in `CHANGELOG.md`. Include the
   chart version, application image version, date, and a concise list of changes.
+- When a chart change depends on new application code or CLI flags, bump the
+  application image version at the same time and update `appVersion`, the
+  default `image.tag`, Artifact Hub image metadata, and release notes together.
 - Keep `artifacthub.io/changes` in `chart/Chart.yaml` aligned with the current
   chart release. It describes only the changes in that release.
 - Keep the chart installation examples in `chart/README.md` synchronized with
