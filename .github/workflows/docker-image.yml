@@ -10,7 +10,7 @@ on:
       - Dockerfile
       - multicast-relay.py
       - openwrt-python-encodings/**
-      - .github/workflows/docker-image.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,11 +18,11 @@ permissions:
   packages: write
 
 jobs:
-  tests:
-    uses: ./.github/workflows/python-tests.yml
+  validate:
+    uses: ./.github/workflows/ci.yml
 
   docker:
-    needs: tests
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
