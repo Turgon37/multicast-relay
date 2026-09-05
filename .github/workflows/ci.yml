@@ -36,6 +36,7 @@ jobs:
 
       - name: Install actionlint
         run: |
+          mkdir -p /tmp/actionlint
           curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
             | bash -s -- "$ACTIONLINT_VERSION" /tmp/actionlint
 
