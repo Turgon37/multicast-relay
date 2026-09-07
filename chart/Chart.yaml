@@ -2,8 +2,8 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.19
-appVersion: 1.0.2
+version: 0.1.21
+appVersion: 1.0.4
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/links: |
@@ -16,15 +16,17 @@ annotations:
       url: https://github.com/Turgon37/multicast-relay/pkgs/container/multicast-relay
   artifacthub.io/images: |
     - name: multicast-relay
-      image: ghcr.io/turgon37/multicast-relay:1.0.2
+      image: ghcr.io/turgon37/multicast-relay:1.0.4
   artifacthub.io/changes: |
     - kind: changed
-      description: Add startup logs showing the receive socket type configured for each relay listener.
+      description: Rename the local AF_PACKET receive option to receiveLocalOutgoing and document the receive and transmit modes.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
     - kind: changed
-      description: Add startup logs showing the transmit socket type configured for each interface.
+      description: Expose the receiveLocalOutgoing relay option in the Helm chart values and deployment template.
+    - kind: fixed
+      description: Export cumulative CPU time spent processing packets with Prometheus labels per packet source.
 keywords:
   - multicast
   - network

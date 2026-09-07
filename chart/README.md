@@ -11,7 +11,7 @@ helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.19 \
+  --version 0.1.21 \
   --set relay.interfaces[0]=eth0
 ```
 
@@ -50,7 +50,7 @@ endpoint.
 | `replicaCount` | int | `1` | Number of relay pods. Use `1` when host networking shares the same interface. |
 | `strategy.type` | string | `"Recreate"` | Deployment strategy; `Recreate` or `RollingUpdate`. |
 | `image.repository` | string | `"ghcr.io/turgon37/multicast-relay"` | Container image repository. |
-| `image.tag` | string | `"1.0.2"` | Container image tag. |
+| `image.tag` | string | `"1.0.4"` | Container image tag. |
 | `image.pullPolicy` | string | `"IfNotPresent"` | Kubernetes image pull policy. |
 | `relay.interfaces` | list | `[]` | Required interfaces passed to `--interfaces`. |
 | `relay.noTransmitInterfaces` | list | `[]` | Listen-only interfaces passed to `--noTransmitInterfaces`. |
@@ -59,6 +59,7 @@ endpoint.
 | `relay.wait` | bool | `false` | Adds `--wait` to wait for interface IPv4 addresses. |
 | `relay.transmitUdp` | bool | `false` | Adds `--transmitUdp` instead of using raw sockets for transmission. |
 | `relay.receiveUdp` | bool | `false` | Adds `--receiveUdp` to receive multicast traffic through UDP sockets. |
+| `relay.receiveLocalOutgoing` | bool | `false` | Adds `--receiveLocalOutgoing` to capture locally generated multicast traffic through AF_PACKET sockets. |
 | `relay.noRemoteRelay` | bool | `false` | Adds `--noRemoteRelay`. |
 | `relay.verbose` | bool | `false` | Adds `--verbose`. |
 | `relay.debug` | bool | `false` | Adds `--debug`. |

@@ -16,7 +16,7 @@ image:
   # Container image repository.
   repository: ghcr.io/turgon37/multicast-relay
   # Container image tag.
-  tag: 1.0.2
+  tag: 1.0.4
   # Kubernetes image pull policy.
   pullPolicy: IfNotPresent
 
@@ -36,6 +36,8 @@ relay:
   transmitUdp: false
   # Adds --receiveUdp to receive multicast traffic through UDP sockets.
   receiveUdp: false
+  # Adds --receiveLocalOutgoing to receive locally generated multicast traffic through AF_PACKET sockets.
+  receiveLocalOutgoing: false
   # Adds --noRemoteRelay.
   noRemoteRelay: false
   # Adds --verbose.

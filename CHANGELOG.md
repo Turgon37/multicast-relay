@@ -9,6 +9,22 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.21] - 2026-09-07
+
+Chart version `0.1.21`, using multicast-relay image version `1.0.4`.
+
+- Rename the local AF_PACKET receive option to `--receiveLocalOutgoing` and update the Helm value to `relay.receiveLocalOutgoing`.
+- Document how the receive and transmit socket modes work and when to use each option.
+- Export cumulative CPU time spent processing packets with Prometheus labels per packet source.
+
+## [0.1.20] - 2026-09-07
+
+Chart version `0.1.20`, using multicast-relay image version `1.0.3`.
+
+- Add AF_PACKET-based capture for locally generated multicast packets with a kernel socket filter.
+- Expose the `receiveOutgoing` relay option in the Helm chart values and deployment template.
+- Apply the configured timezone to log timestamps and include timezone data in the container image.
+
 ## [0.1.19] - 2026-09-06
 
 Chart version `0.1.19`, using multicast-relay image version `1.0.2`.

@@ -74,6 +74,9 @@ spec:
             {{- if .Values.relay.receiveUdp }}
             - --receiveUdp
             {{- end }}
+            {{- if .Values.relay.receiveLocalOutgoing }}
+            - --receiveLocalOutgoing
+            {{- end }}
             {{- if .Values.relay.noRemoteRelay }}
             - --noRemoteRelay
             {{- end }}

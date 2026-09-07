@@ -79,6 +79,108 @@ def test_receive_udp_packet():
     assert packet[28:] == b'hello'
 
 
+def test_outgoing_packet_matches_binding():
+    packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
+
+    assert mr.PacketRelay.isConfiguredOutgoingPacket(mr.PacketRelay.PACKET_OUTGOING,
+                                                     packet,
+                                                     {('224.0.0.251', 5353)})
+
+
+def test_outgoing_packet_ignores_non_outgoing():
+    packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
+
+    assert not mr.PacketRelay.isConfiguredOutgoingPacket(0, packet, {('224.0.0.251', 5353)})
+
+
+def test_outgoing_packet_ignores_unconfigured_destination():
+    packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '239.255.255.250', 1900, b'hello', 255)
+
+    assert not mr.PacketRelay.isConfiguredOutgoingPacket(mr.PacketRelay.PACKET_OUTGOING,
+                                                         packet,
+                                                         {('224.0.0.251', 5353)})
+
+
+def test_outgoing_packet_ignores_tcp():
+    packet = bytearray(mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255))
+    packet[9] = socket.IPPROTO_TCP
+
+    assert not mr.PacketRelay.isConfiguredOutgoingPacket(mr.PacketRelay.PACKET_OUTGOING,
+                                                         bytes(packet),
+                                                         {('224.0.0.251', 5353)})
+
+
+def test_ethernet_payload_ipv4():
+    packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
+    frame = (b'\x01\x00\x5e\x00\x00\xfb' +
+             b'\x02\x00\x00\x00\x00\x01' +
+             struct.pack('!H', mr.PacketRelay.ETH_P_IP) +
+             packet)
+
+    assert mr.PacketRelay.ethernetPayload(frame) == packet
+
+
+def test_ethernet_payload_vlan_ipv4():
+    packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
+    frame = (b'\x01\x00\x5e\x00\x00\xfb' +
+             b'\x02\x00\x00\x00\x00\x01' +
+             struct.pack('!H', mr.PacketRelay.ETH_P_8021Q) +
+             struct.pack('!H', 500) +
+             struct.pack('!H', mr.PacketRelay.ETH_P_IP) +
+             packet)
+
+    assert mr.PacketRelay.ethernetPayload(frame) == packet
+
+
+def test_receive_outgoing_packet_preserves_ipv4_packet():
+    class PacketSocket():
+        def __init__(self, frame):
+            self.frame = frame
+
+        def recvfrom(self, size):
+            return (self.frame, ('enp2s0.500', mr.PacketRelay.htons(mr.PacketRelay.ETH_P_IP), mr.PacketRelay.PACKET_OUTGOING, 0, b''))
+
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.outgoingBindings = {('224.0.0.251', 5353)}
+
+    packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
+    frame = (b'\x01\x00\x5e\x00\x00\xfb' +
+             b'\x02\x00\x00\x00\x00\x01' +
+             struct.pack('!H', mr.PacketRelay.ETH_P_IP) +
+             packet)
+
+    receivedPacket, srcAddr = relay.receiveOutgoingPacket(PacketSocket(frame))
+
+    assert receivedPacket == packet
+    assert srcAddr == '10.1.0.1'
+
+
+def test_receive_outgoing_packet_ignores_non_outgoing_type():
+    class PacketSocket():
+        def recvfrom(self, size):
+            packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
+            frame = (b'\x01\x00\x5e\x00\x00\xfb' +
+                     b'\x02\x00\x00\x00\x00\x01' +
+                     struct.pack('!H', mr.PacketRelay.ETH_P_IP) +
+                     packet)
+            return (frame, ('enp2s0.500', mr.PacketRelay.htons(mr.PacketRelay.ETH_P_IP), 0, 0, b''))
+
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.outgoingBindings = {('224.0.0.251', 5353)}
+
+    assert relay.receiveOutgoingPacket(PacketSocket()) is None
+
+
+def test_setup_outgoing_receivers_disabled():
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.receiveLocalOutgoing = False
+    relay.receivers = []
+
+    relay.setupOutgoingReceivers()
+
+    assert relay.receivers == []
+
+
 def test_is_own_udp_packet():
     relay = mr.PacketRelay.__new__(mr.PacketRelay)
     relay.udp = True
@@ -106,6 +208,7 @@ def test_metrics_disabled():
     metrics.packetRelayed('local')
     metrics.packetDropped('duplicate')
     metrics.packetTransmissionError('local')
+    metrics.packetProcessingCpuSeconds('local_raw', 0.01)
     metrics.setRemoteConnections(0)
 
 
@@ -137,6 +240,7 @@ def test_metrics_enabled():
         metrics.packetRelayed('remote')
         metrics.packetDropped('duplicate')
         metrics.packetTransmissionError('local')
+        metrics.packetProcessingCpuSeconds('local_raw', 0.01)
         metrics.setRemoteConnections(1)
     finally:
         if previousClient:
@@ -145,7 +249,7 @@ def test_metrics_enabled():
             del sys.modules['prometheus_client']
 
     assert startedPorts == [9090]
-    assert len(createdMetrics) == 5
+    assert len(createdMetrics) == 6
 
 
 def test_net_checksum_ipv4():
