@@ -23,6 +23,8 @@ annotations:
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
+    - kind: fixed
+      description: Fix the receiveLocalOutgoing socket filter program so it attaches cleanly on Linux packet sockets.
 keywords:
   - multicast
   - network

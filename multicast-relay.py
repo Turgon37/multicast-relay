@@ -396,7 +396,8 @@ class PacketRelay():
             groupedBindings.setdefault(addr, set()).add(port)
 
         def appendMatchBlock(program, labelPrefix, ipOffset, portOffset):
-            for index, (addr, ports) in enumerate(groupedBindings.items()):
+            items = list(groupedBindings.items())
+            for index, (addr, ports) in enumerate(items):
                 nextLabel = '%s_ip_%d' % (labelPrefix, index + 1)
                 checkPortsLabel = '%s_ports_%d' % (labelPrefix, index)
                 program.append(PacketRelay.bpfStatement(bpfLd | bpfW | bpfAbs, ipOffset))
@@ -411,7 +412,7 @@ class PacketRelay():
                     program.append(PacketRelay.bpfJump(bpfJmp | bpfJeq | bpfK,
                                                        port,
                                                        jtLabel='accept',
-                                                       jfLabel='reject' if portIndex + 1 == len(ports) else None))
+                                                       jfLabel=(nextLabel if index + 1 < len(items) else 'reject') if portIndex + 1 == len(ports) else None))
                 if index + 1 < len(groupedBindings):
                     program.append(PacketRelay.bpfLabel(nextLabel))
 
@@ -422,8 +423,6 @@ class PacketRelay():
             PacketRelay.bpfJump(bpfJmp | bpfJeq | bpfK, PacketRelay.ETH_P_IP, jtLabel='plain_ipv4'),
             PacketRelay.bpfJump(bpfJmp | bpfJeq | bpfK, PacketRelay.ETH_P_8021Q, jtLabel='vlan_ipv4'),
             PacketRelay.bpfJump(bpfJmp | bpfJeq | bpfK, PacketRelay.ETH_P_8021AD, jtLabel='vlan_ipv4'),
-            PacketRelay.bpfLabel('reject'),
-            PacketRelay.bpfStatement(bpfRet | bpfK, 0),
             PacketRelay.bpfLabel('plain_ipv4'),
             PacketRelay.bpfStatement(bpfLd | bpfB | bpfAbs, 23),
             PacketRelay.bpfJump(bpfJmp | bpfJeq | bpfK, socket.IPPROTO_UDP, jfLabel='reject'),
@@ -444,6 +443,8 @@ class PacketRelay():
         program.extend([
             PacketRelay.bpfLabel('accept'),
             PacketRelay.bpfStatement(bpfRet | bpfK, 0xffff),
+            PacketRelay.bpfLabel('reject'),
+            PacketRelay.bpfStatement(bpfRet | bpfK, 0),
         ])
 
         return PacketRelay.assembleBpf(program)
@@ -506,10 +507,14 @@ class PacketRelay():
 
         outgoingBindings = sorted((addr, port) for (addr, port) in self.bindings if PacketRelay.isMulticast(addr))
         if not outgoingBindings:
+            self.logger.info('No multicast bindings available for outgoing receive sockets')
             return
 
         self.outgoingBindings = set(outgoingBindings)
         instructions = PacketRelay.buildOutgoingBpf(outgoingBindings)
+        self.logger.info('Outgoing receive bindings: %s' % ', '.join('%s:%d' % (addr, port) for (addr, port) in outgoingBindings))
+        if self.debug:
+            self.logger.debug('Outgoing receive BPF program has %d instructions' % len(instructions))
         configuredInterfaces = set()
 
         for interface in self.interfaces:
@@ -524,6 +529,8 @@ class PacketRelay():
             rx = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(PacketRelay.ETH_P_ALL))
             rx.bind((ifname, 0))
             PacketRelay.attachBpf(rx, instructions)
+            if self.debug:
+                self.logger.debug('Attached outgoing receive BPF to %s' % ifname)
             self.receivers.append(rx)
             self.receiverMetadata[rx] = {'kind': 'outgoing', 'interface': ifname}
 

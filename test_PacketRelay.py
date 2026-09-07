@@ -110,6 +110,15 @@ def test_outgoing_packet_ignores_tcp():
                                                          {('224.0.0.251', 5353)})
 
 
+def test_build_outgoing_bpf_has_only_forward_jumps():
+    instructions = mr.PacketRelay.buildOutgoingBpf([('224.0.0.251', 5353), ('239.255.255.250', 1900)])
+
+    assert instructions
+    for (_, jt, jf, _) in instructions:
+        assert 0 <= jt <= 255
+        assert 0 <= jf <= 255
+
+
 def test_ethernet_payload_ipv4():
     packet = mr.PacketRelay.buildUdpIpPacket('10.1.0.1', 5353, '224.0.0.251', 5353, b'hello', 255)
     frame = (b'\x01\x00\x5e\x00\x00\xfb' +

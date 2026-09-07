@@ -14,6 +14,7 @@ No changes yet.
 Chart version `0.1.23`, using multicast-relay image version `1.0.6`.
 
 - Restrict raw broadcast listeners to their configured broadcast destination so they do not also process multicast packets received on the same UDP port.
+- Fix the `--receiveLocalOutgoing` socket filter program so it attaches cleanly on Linux packet sockets.
 
 ## [0.1.22] - 2026-09-07
 
