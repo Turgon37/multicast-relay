@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.22] - 2026-09-07
+
+Chart version `0.1.22`, using multicast-relay image version `1.0.5`.
+
+- Open one UDP multicast receive socket per interface when `--receiveUdp` is enabled instead of sharing a single socket across interfaces.
+- Preserve the receiving interface metadata in `receiveUdp` mode so packets are not needlessly retransmitted back onto their source interface.
+
 ## [0.1.21] - 2026-09-07
 
 Chart version `0.1.21`, using multicast-relay image version `1.0.4`.
