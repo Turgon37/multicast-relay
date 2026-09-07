@@ -595,12 +595,7 @@ class PacketRelay():
         # intercepting broadcast packets.
         if self.isMulticast(addr):
             if self.receiveUdp:
-                rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-                rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-                if hasattr(socket, 'IP_RECVTTL'):
-                    rx.setsockopt(socket.IPPROTO_IP, socket.IP_RECVTTL, 1)
-                rx.bind(('0.0.0.0', port))
+                rx = None
             else:
                 rx = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
                 rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -626,9 +621,24 @@ class PacketRelay():
                 listenIP = '255.255.255.255'
 
             elif self.isMulticast(addr):
+                if self.receiveUdp:
+                    rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                    rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if hasattr(socket, 'SO_REUSEPORT'):
+                        rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                    if hasattr(socket, 'IP_RECVTTL'):
+                        rx.setsockopt(socket.IPPROTO_IP, socket.IP_RECVTTL, 1)
+                    if 'SO_BINDTODEVICE' not in dir(socket):
+                        socket.SO_BINDTODEVICE = 25
+                    rx.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, ifname.encode('utf-8'))
+                    rx.bind(('0.0.0.0', port))
+
                 packedAddress = struct.pack('4s4s', socket.inet_aton(addr), socket.inet_aton(ip))
                 rx.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, packedAddress)
                 listenIP = addr
+                if self.receiveUdp:
+                    self.receivers.append(rx)
+                    self.receiverMetadata[rx] = {'kind': 'udp', 'addr': addr, 'port': port, 'interface': ifname}
             else:
                 listenIP = addr
 
@@ -655,10 +665,8 @@ class PacketRelay():
                 self.transmitters.append({'relay': {'addr': listenIP, 'port': port}, 'interface': ifname, 'addr': ip, 'mac': mac, 'netmask': netmask, 'broadcast': broadcast, 'socket': tx, 'sourcePort': sourcePort, 'service': service})
 
         if self.isMulticast(addr):
-            self.receivers.append(rx)
-            if self.receiveUdp:
-                self.receiverMetadata[rx] = {'kind': 'udp', 'addr': addr, 'port': port}
-            else:
+            if not self.receiveUdp:
+                self.receivers.append(rx)
                 rx.bind((addr, port))
         self.bindings.add((addr, port))
 
@@ -1316,7 +1324,12 @@ class PacketRelay():
                             startCpu = time.process_time()
                             try:
                                 (data, addr) = self.receiveUdpPacket(s, receiverMetadata['addr'], receiverMetadata['port'])
-                                recentSsdpSearchSrc = self.processPacket(s, data, addr, 'local_udp', None, recentSsdpSearchSrc)
+                                recentSsdpSearchSrc = self.processPacket(s,
+                                                                         data,
+                                                                         addr,
+                                                                         'local_udp',
+                                                                         receiverMetadata.get('interface'),
+                                                                         recentSsdpSearchSrc)
                             finally:
                                 self.metrics.packetProcessingCpuSeconds('local_udp', time.process_time() - startCpu)
                         elif receiverMetadata and receiverMetadata.get('kind') == 'outgoing':

@@ -181,6 +181,68 @@ def test_setup_outgoing_receivers_disabled():
     assert relay.receivers == []
 
 
+def test_add_listener_receive_udp_uses_one_socket_per_interface():
+    createdSockets = []
+
+    class FakeSocketInstance():
+        def __init__(self):
+            self.options = []
+            self.binds = []
+
+        def setsockopt(self, level, option, value):
+            self.options.append((level, option, value))
+
+        def bind(self, address):
+            self.binds.append(address)
+
+    class FakeSocketModule():
+        AF_INET = 2
+        SOCK_DGRAM = 2
+        SOCK_RAW = 3
+        IPPROTO_UDP = 17
+        IPPROTO_IP = 0
+        SOL_SOCKET = 1
+        SOL_IP = 0
+        SO_REUSEADDR = 2
+        SO_REUSEPORT = 15
+        SO_BINDTODEVICE = 25
+        IP_RECVTTL = 12
+        IP_ADD_MEMBERSHIP = 35
+
+        @staticmethod
+        def socket(family, socktype, protocol=None):
+            sock = FakeSocketInstance()
+            createdSockets.append((family, socktype, protocol, sock))
+            return sock
+
+        @staticmethod
+        def inet_aton(addr):
+            return socket.inet_aton(addr)
+
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.receiveUdp = True
+    relay.noTransmitInterfaces = ['eth0', 'eth1']
+    relay.interfaces = ['eth0', 'eth1']
+    relay.receivers = []
+    relay.receiverMetadata = {}
+    relay.bindings = set()
+    relay.transmitters = []
+    relay.etherAddrs = {}
+    relay.logger = types.SimpleNamespace(info=lambda *args, **kwargs: None)
+    relay.getInterface = lambda interface: (interface, b'', '10.0.0.%d' % (1 if interface == 'eth0' else 2), '255.255.255.0', '10.0.0.255')
+
+    previousSocket = mr.socket
+    mr.socket = FakeSocketModule
+    try:
+        relay.addListener('224.0.0.251', 5353, 'mDNS')
+    finally:
+        mr.socket = previousSocket
+
+    assert len(relay.receivers) == 2
+    assert {relay.receiverMetadata[sock]['interface'] for sock in relay.receivers} == {'eth0', 'eth1'}
+    assert all(relay.receiverMetadata[sock]['kind'] == 'udp' for sock in relay.receivers)
+
+
 def test_is_own_udp_packet():
     relay = mr.PacketRelay.__new__(mr.PacketRelay)
     relay.udp = True
