@@ -1128,8 +1128,9 @@ class PacketRelay():
                     remoteConnection.sendall(struct.pack('!H', len(packet)) + packet)
                     self.metrics.packetRelayed('remote')
                     if self.debug:
-                        self.logger.debug('Forwarded packet to remote received on %s: %s' % (receivingInterface or receivingSource,
-                                                                                              PacketRelay.packetDescription(data)))
+                        self.logger.debug('Forwarded packet to remote received on %s [ttl %s]: %s' % (receivingInterface or receivingSource,
+                                                                                                       ttl,
+                                                                                                       PacketRelay.packetDescription(data)))
 
                     for remote in self.remoteAddrs:
                         if remote['socket'] == remoteConnection and remote['connecting']:
