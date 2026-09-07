@@ -2,8 +2,8 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.22
-appVersion: 1.0.5
+version: 0.1.23
+appVersion: 1.0.6
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/links: |
@@ -16,15 +16,13 @@ annotations:
       url: https://github.com/Turgon37/multicast-relay/pkgs/container/multicast-relay
   artifacthub.io/images: |
     - name: multicast-relay
-      image: ghcr.io/turgon37/multicast-relay:1.0.5
+      image: ghcr.io/turgon37/multicast-relay:1.0.6
   artifacthub.io/changes: |
-    - kind: changed
-      description: Open one UDP multicast receive socket per interface when receiveUdp is enabled instead of sharing a single socket across interfaces.
+    - kind: fixed
+      description: Restrict raw broadcast listeners to their configured broadcast destination so they do not also process multicast packets received on the same UDP port.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
-    - kind: fixed
-      description: Preserve the receiving interface metadata in receiveUdp mode so packets are not retransmitted back onto their source interface.
 keywords:
   - multicast
   - network

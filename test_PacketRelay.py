@@ -181,6 +181,27 @@ def test_setup_outgoing_receivers_disabled():
     assert relay.receivers == []
 
 
+def test_receive_raw_bound_packet_accepts_matching_broadcast_destination():
+    class RawSocket():
+        def recvfrom(self, size):
+            packet = mr.PacketRelay.buildUdpIpPacket('10.1.3.254', 1900, '255.255.255.255', 1900, b'hello', 1)
+            return (packet, ('10.1.3.254', 0))
+
+    packet, srcAddr = mr.PacketRelay.receiveRawBoundPacket(RawSocket(), '255.255.255.255', 1900)
+
+    assert srcAddr == '10.1.3.254'
+    assert mr.PacketRelay.packetUdpDestination(packet) == ('255.255.255.255', 1900)
+
+
+def test_receive_raw_bound_packet_ignores_multicast_on_same_port():
+    class RawSocket():
+        def recvfrom(self, size):
+            packet = mr.PacketRelay.buildUdpIpPacket('10.1.3.254', 1900, '239.255.255.250', 1900, b'hello', 1)
+            return (packet, ('10.1.3.254', 0))
+
+    assert mr.PacketRelay.receiveRawBoundPacket(RawSocket(), '255.255.255.255', 1900) is None
+
+
 def test_add_listener_receive_udp_uses_one_socket_per_interface():
     createdSockets = []
 
@@ -241,6 +262,66 @@ def test_add_listener_receive_udp_uses_one_socket_per_interface():
     assert len(relay.receivers) == 2
     assert {relay.receiverMetadata[sock]['interface'] for sock in relay.receivers} == {'eth0', 'eth1'}
     assert all(relay.receiverMetadata[sock]['kind'] == 'udp' for sock in relay.receivers)
+
+
+def test_add_listener_broadcast_socket_records_broadcast_metadata():
+    createdSockets = []
+
+    class FakeSocketInstance():
+        def __init__(self):
+            self.options = []
+            self.binds = []
+
+        def setsockopt(self, level, option, value):
+            self.options.append((level, option, value))
+
+        def bind(self, address):
+            self.binds.append(address)
+
+    class FakeSocketModule():
+        AF_INET = 2
+        AF_PACKET = 17
+        SOCK_DGRAM = 2
+        SOCK_RAW = 3
+        IPPROTO_UDP = 17
+        SOL_SOCKET = 1
+        SO_REUSEADDR = 2
+        SO_BROADCAST = 6
+        SO_BINDTODEVICE = 25
+
+        @staticmethod
+        def socket(family, socktype, protocol=None):
+            sock = FakeSocketInstance()
+            createdSockets.append((family, socktype, protocol, sock))
+            return sock
+
+        @staticmethod
+        def inet_aton(addr):
+            return socket.inet_aton(addr)
+
+    relay = mr.PacketRelay.__new__(mr.PacketRelay)
+    relay.receiveUdp = False
+    relay.noTransmitInterfaces = ['eth0']
+    relay.interfaces = ['eth0']
+    relay.receivers = []
+    relay.receiverMetadata = {}
+    relay.bindings = set()
+    relay.transmitters = []
+    relay.etherAddrs = {}
+    relay.logger = types.SimpleNamespace(info=lambda *args, **kwargs: None)
+    relay.broadcastIpToMac = lambda addr: b''
+    relay.getInterface = lambda interface: (interface, b'', '10.0.0.1', '255.255.255.0', '10.0.0.255')
+
+    previousSocket = mr.socket
+    mr.socket = FakeSocketModule
+    try:
+        relay.addListener('255.255.255.255', 1900, 'Sonos Discovery')
+    finally:
+        mr.socket = previousSocket
+
+    assert len(relay.receivers) == 1
+    metadata = relay.receiverMetadata[relay.receivers[0]]
+    assert metadata == {'kind': 'broadcast_raw', 'addr': '10.0.0.255', 'port': 1900, 'interface': 'eth0'}
 
 
 def test_is_own_udp_packet():

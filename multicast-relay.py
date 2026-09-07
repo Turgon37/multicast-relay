@@ -617,6 +617,7 @@ class PacketRelay():
                 rx.bind(('0.0.0.0', port))
 
                 self.receivers.append(rx)
+                self.receiverMetadata[rx] = {'kind': 'broadcast_raw', 'addr': broadcast, 'port': port, 'interface': ifname}
                 self.bindings.add((broadcast, port))
                 listenIP = '255.255.255.255'
 
@@ -1050,6 +1051,15 @@ class PacketRelay():
         srcAddr = socket.inet_ntoa(ipPacket[12:16])
         return (ipPacket, srcAddr)
 
+    @staticmethod
+    def receiveRawBoundPacket(sock, expectedAddr, expectedPort):
+        (data, addr) = sock.recvfrom(10240)
+        srcAddr = addr[0]
+        destination = PacketRelay.packetUdpDestination(data)
+        if destination != (expectedAddr, expectedPort):
+            return None
+        return (data, srcAddr)
+
     def match(self, addr, port):
         return ((addr, port)) in self.bindings
 
@@ -1332,6 +1342,22 @@ class PacketRelay():
                                                                          recentSsdpSearchSrc)
                             finally:
                                 self.metrics.packetProcessingCpuSeconds('local_udp', time.process_time() - startCpu)
+                        elif receiverMetadata and receiverMetadata.get('kind') == 'broadcast_raw':
+                            startCpu = time.process_time()
+                            try:
+                                packet = self.receiveRawBoundPacket(s, receiverMetadata['addr'], receiverMetadata['port'])
+                                if not packet:
+                                    self.metrics.packetDropped('unmatched_destination')
+                                    continue
+                                (data, addr) = packet
+                                recentSsdpSearchSrc = self.processPacket(s,
+                                                                         data,
+                                                                         addr,
+                                                                         'local_raw',
+                                                                         receiverMetadata['interface'],
+                                                                         recentSsdpSearchSrc)
+                            finally:
+                                self.metrics.packetProcessingCpuSeconds('local_raw', time.process_time() - startCpu)
                         elif receiverMetadata and receiverMetadata.get('kind') == 'outgoing':
                             startCpu = time.process_time()
                             try:
