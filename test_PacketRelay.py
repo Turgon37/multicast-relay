@@ -220,7 +220,7 @@ def test_metrics_enabled():
         def labels(self, value):
             return self
 
-        def inc(self):
+        def inc(self, value=1):
             pass
 
         def set(self, value):
