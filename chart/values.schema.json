@@ -193,6 +193,32 @@
       "required": ["enabled", "port", "podMonitor"],
       "additionalProperties": false
     },
+    "grafanaDashboard": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "labels": {
+          "$ref": "#/definitions/stringMap"
+        },
+        "annotations": {
+          "$ref": "#/definitions/stringMap"
+        },
+        "sidecarLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sidecarLabelValue": {
+          "type": "string"
+        }
+      },
+      "required": ["enabled", "namespace", "labels", "annotations", "sidecarLabel", "sidecarLabelValue"],
+      "additionalProperties": false
+    },
     "env": {
       "type": "object",
       "additionalProperties": {
@@ -310,7 +336,7 @@
       "additionalProperties": false
     }
   },
-  "required": ["image", "relay", "livenessPort", "metrics"],
+  "required": ["image", "relay", "livenessPort", "metrics", "grafanaDashboard"],
   "allOf": [
     {
       "if": {

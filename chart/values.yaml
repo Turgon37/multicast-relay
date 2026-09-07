@@ -69,6 +69,20 @@ metrics:
     # Metrics HTTP path.
     path: /metrics
 
+grafanaDashboard:
+  # Creates a ConfigMap containing a Grafana dashboard for multicast-relay metrics.
+  enabled: false
+  # Namespace containing the dashboard ConfigMap; defaults to the release namespace.
+  namespace: ""
+  # Additional labels for the dashboard ConfigMap.
+  labels: {}
+  # Additional annotations for the dashboard ConfigMap.
+  annotations: {}
+  # Label key used by Grafana sidecar dashboard loaders.
+  sidecarLabel: grafana_dashboard
+  # Label value used by Grafana sidecar dashboard loaders.
+  sidecarLabelValue: "1"
+
 # Environment variables added to the relay container.
 env:
   TZ: Europe/Paris

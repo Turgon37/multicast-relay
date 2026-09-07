@@ -2,7 +2,7 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.23
+version: 0.1.25
 appVersion: 1.0.6
 annotations:
   artifacthub.io/license: MIT
@@ -18,13 +18,17 @@ annotations:
     - name: multicast-relay
       image: ghcr.io/turgon37/multicast-relay:1.0.6
   artifacthub.io/changes: |
-    - kind: fixed
-      description: Restrict raw broadcast listeners to their configured broadcast destination so they do not also process multicast packets received on the same UDP port.
+    - kind: added
+      description: Add an optional Grafana dashboard ConfigMap for multicast-relay metrics, loaded from a dashboard JSON file embedded in the chart.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
+    - kind: added
+      description: Add configurable namespace, labels, annotations and sidecar label settings for the Grafana dashboard ConfigMap.
     - kind: fixed
-      description: Fix the receiveLocalOutgoing socket filter program so it attaches cleanly on Linux packet sockets.
+      description: Increase the embedded Grafana dashboard refresh interval to reduce unnecessary refresh churn.
+    - kind: added
+      description: Add Grafana dashboard selectors for Prometheus datasource and scraped instance, and apply the instance filter across all dashboard queries.
 keywords:
   - multicast
   - network

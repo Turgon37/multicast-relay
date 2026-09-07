@@ -1,0 +1,20 @@
+{{- if .Values.grafanaDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "multicast-relay.fullname" . }}-dashboard
+  namespace: {{ default (include "multicast-relay.namespace" .) .Values.grafanaDashboard.namespace }}
+  labels:
+    {{- include "multicast-relay.labels" . | nindent 4 }}
+    {{ .Values.grafanaDashboard.sidecarLabel }}: {{ .Values.grafanaDashboard.sidecarLabelValue | quote }}
+    {{- with .Values.grafanaDashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.grafanaDashboard.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  multicast-relay.json: |
+{{ .Files.Get "dashboards/multicast-relay.json" | indent 4 }}
+{{- end }}

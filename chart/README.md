@@ -11,7 +11,7 @@ helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 0.1.23 \
+  --version 0.1.25 \
   --set relay.interfaces[0]=eth0
 ```
 
@@ -37,6 +37,11 @@ ingress/egress rules when network isolation is required.
 Set both `metrics.enabled` and `metrics.podMonitor.enabled` to `true` to
 create a Prometheus Operator `PodMonitor` targeting the relay's `/metrics`
 endpoint.
+
+Set `grafanaDashboard.enabled` to `true` to create a ConfigMap containing a
+Grafana dashboard for the relay metrics. The ConfigMap is labeled for common
+Grafana sidecar loaders and the label key/value, namespace, labels and
+annotations are configurable.
 
 `namespaceOverride` is optional. Leave it empty to use the Helm release namespace.
 
@@ -73,6 +78,12 @@ endpoint.
 | `metrics.podMonitor.interval` | string | `"15s"` | Prometheus scrape interval. |
 | `metrics.podMonitor.scrapeTimeout` | string | `""` | Optional Prometheus scrape timeout. |
 | `metrics.podMonitor.path` | string | `"/metrics"` | Metrics HTTP path. |
+| `grafanaDashboard.enabled` | bool | `false` | Creates a ConfigMap containing a Grafana dashboard for multicast-relay metrics. |
+| `grafanaDashboard.namespace` | string | `""` | Namespace containing the dashboard ConfigMap; defaults to the release namespace. |
+| `grafanaDashboard.labels` | object | `{}` | Additional labels for the dashboard ConfigMap. |
+| `grafanaDashboard.annotations` | object | `{}` | Additional annotations for the dashboard ConfigMap. |
+| `grafanaDashboard.sidecarLabel` | string | `"grafana_dashboard"` | Label key used by Grafana sidecar dashboard loaders. |
+| `grafanaDashboard.sidecarLabelValue` | string | `"1"` | Label value used by Grafana sidecar dashboard loaders. |
 | `env` | object | `{"TZ":"Europe/Paris"}` | Environment variables added to the relay container. |
 | `extraEnv` | list | `[]` | Additional complete Kubernetes environment variable entries. |
 | `hostNetwork` | bool | `true` | Enables host networking for multicast packet reception and emission. |

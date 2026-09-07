@@ -9,6 +9,23 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.25] - 2026-09-08
+
+Chart version `0.1.25`, using multicast-relay image version `1.0.6`.
+
+- Add an optional Grafana dashboard ConfigMap for multicast-relay metrics, loaded from a dashboard JSON file embedded in the chart.
+- Add configurable namespace, labels, annotations and sidecar label settings for the Grafana dashboard ConfigMap.
+- Increase the embedded Grafana dashboard refresh interval to `1m`.
+- Add Grafana dashboard selectors for Prometheus datasource and scraped instance, and apply the instance filter across all dashboard queries.
+
+## [0.1.24] - 2026-09-07
+
+Chart version `0.1.24`, using multicast-relay image version `1.0.6`.
+
+- Add an optional Grafana dashboard ConfigMap for multicast-relay metrics, loaded from a dashboard JSON file embedded in the chart.
+- Add configurable namespace, labels, annotations and sidecar label settings for the Grafana dashboard ConfigMap.
+- Increase the embedded Grafana dashboard refresh interval to `1m`.
+
 ## [0.1.23] - 2026-09-07
 
 Chart version `0.1.23`, using multicast-relay image version `1.0.6`.
