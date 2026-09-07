@@ -9,6 +9,12 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.26] - 2026-09-08
+
+Chart version `0.1.26`, using multicast-relay image version `1.0.7`.
+
+- Include the packet TTL in debug logs when packets are forwarded to remote relays.
+
 ## [0.1.25] - 2026-09-08
 
 Chart version `0.1.25`, using multicast-relay image version `1.0.6`.
