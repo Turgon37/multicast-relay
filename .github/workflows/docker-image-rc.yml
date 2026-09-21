@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - master
+    paths:
+      - Dockerfile
+      - multicast-relay.py
+      - ssdpDiscover.py
   workflow_dispatch:
 
 permissions:
