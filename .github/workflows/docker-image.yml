@@ -191,8 +191,7 @@ jobs:
           )
           PY
           cosign sign-blob --yes \
-            --output-signature /tmp/docker-release.json.sig \
-            --output-certificate /tmp/docker-release.json.pem \
+            --bundle /tmp/docker-release.json.bundle \
             /tmp/docker-release.json
 
       - name: Create GitHub Release
@@ -212,14 +211,12 @@ jobs:
           if gh release view "${TAG}" >/dev/null 2>&1; then
             gh release upload "${TAG}" \
               /tmp/docker-release.json \
-              /tmp/docker-release.json.sig \
-              /tmp/docker-release.json.pem \
+              /tmp/docker-release.json.bundle \
               --clobber
           else
             gh release create "${TAG}" \
               --title "${TAG}" \
               --notes-file /tmp/docker-release-notes.md \
               /tmp/docker-release.json \
-              /tmp/docker-release.json.sig \
-              /tmp/docker-release.json.pem
+              /tmp/docker-release.json.bundle
           fi

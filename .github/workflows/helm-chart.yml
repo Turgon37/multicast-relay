@@ -206,12 +206,10 @@ jobs:
           )
           PY
           cosign sign-blob --yes \
-            --output-signature /tmp/chart-release.json.sig \
-            --output-certificate /tmp/chart-release.json.pem \
+            --bundle /tmp/chart-release.json.bundle \
             /tmp/chart-release.json
           cosign sign-blob --yes \
-            --output-signature "${PACKAGE}.sig" \
-            --output-certificate "${PACKAGE}.pem" \
+            --bundle "${PACKAGE}.bundle" \
             "${PACKAGE}"
 
       - name: Create GitHub Release
@@ -234,22 +232,18 @@ jobs:
           if gh release view "${TAG}" >/dev/null 2>&1; then
             gh release upload "${TAG}" \
               "${PACKAGE}" \
-              "${PACKAGE}.sig" \
-              "${PACKAGE}.pem" \
+              "${PACKAGE}.bundle" \
               /tmp/chart-release.json \
-              /tmp/chart-release.json.sig \
-              /tmp/chart-release.json.pem \
+              /tmp/chart-release.json.bundle \
               --clobber
           else
             gh release create "${TAG}" \
               --title "${TAG}" \
               --notes-file /tmp/chart-release-notes.md \
               "${PACKAGE}" \
-              "${PACKAGE}.sig" \
-              "${PACKAGE}.pem" \
+              "${PACKAGE}.bundle" \
               /tmp/chart-release.json \
-              /tmp/chart-release.json.sig \
-              /tmp/chart-release.json.pem
+              /tmp/chart-release.json.bundle
           fi
 
       - name: Publish Artifact Hub repository metadata
