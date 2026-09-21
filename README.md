@@ -11,13 +11,13 @@ See the [changelog](CHANGELOG.md) for the relay history and release notes.
 
 ## Delivery
 
-Releases are published from `master` only.
+Pull requests run validation through `CI` and `Chart CI`.
 
-- Pull requests run validation through `CI` and `Chart CI`.
-- Merges to `master` can publish the Docker image and Helm chart automatically.
-- Each publication also creates a GitHub Release: `v<image-version>` for Docker and `chart-v<chart-version>` for the Helm chart.
-- The Docker image is pushed to GHCR and signed with Cosign.
-- The Helm chart is packaged as an OCI artifact on GHCR, signed with Cosign, published with Artifact Hub metadata, and the GitHub Release carries signed release metadata and the packaged chart asset signature.
+- Official Docker releases are published from Git tags in the `vMAJOR.MINOR.PATCH` format.
+- `master` can also publish `rc` image tags for pre-release validation, for example `rc` and `rc-<sha>`.
+- Official Docker releases create a GitHub Release and a chart bump PR.
+- The Helm chart is published from the merged chart bump on `master`, then released as an OCI artifact on GHCR.
+- The chart release also creates a GitHub Release with the packaged chart asset and release metadata.
 - Renovate opens dependency update PRs but does not publish releases.
 - The Docker image also ships `ssdp-discover` as a small SSDP/multicast debug helper.
 

@@ -9,6 +9,14 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [1.0.0] - 2026-09-22
+
+Chart version `1.0.0`, using multicast-relay image version `1.0.10`.
+
+- Reset the Helm chart to a clean `1.0.0` baseline.
+- Keep the chart metadata, default image tag, values schema and release docs aligned with the current application image version.
+- Prepare the release workflows for tag-based Docker publication with an optional `rc` image stream on `master`.
+
 ## [0.1.30] - 2026-09-22
 
 Chart version `0.1.30`, using multicast-relay image version `1.0.10`.

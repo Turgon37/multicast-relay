@@ -222,13 +222,6 @@ jobs:
           test -n "$PACKAGE"
           TAG="chart-v${VERSION}"
 
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "tag ${TAG} already exists"
-          else
-            git tag "${TAG}"
-            git push origin "${TAG}"
-          fi
-
           if gh release view "${TAG}" >/dev/null 2>&1; then
             gh release upload "${TAG}" \
               "${PACKAGE}" \

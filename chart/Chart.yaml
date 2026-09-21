@@ -2,7 +2,7 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.30
+version: 1.0.0
 appVersion: 1.0.10
 annotations:
   artifacthub.io/license: MIT
@@ -19,7 +19,7 @@ annotations:
       image: ghcr.io/turgon37/multicast-relay:1.0.10
   artifacthub.io/changes: |
     - kind: changed
-      description: Bump the chart version and keep the mdnsInspect release metadata aligned.
+      description: Reset the chart version to 1.0.0 while keeping the application image metadata aligned.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
