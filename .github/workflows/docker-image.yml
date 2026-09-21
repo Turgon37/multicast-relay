@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  pull-requests: write
   packages: write
 
 concurrency:
@@ -42,41 +43,6 @@ jobs:
             echo "major_minor=$MAJOR.$MINOR"
             echo "major=$MAJOR"
           } >> "$GITHUB_OUTPUT"
-
-      - name: Verify image version bump
-        env:
-          IMAGE_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import re
-          import os
-          from pathlib import Path
-
-          version = os.environ['IMAGE_VERSION']
-
-          def read_field(text, key):
-              match = re.search(rf'^{key}:\s*"?([^\n"]+)"?', text, re.M)
-              if not match:
-                  raise SystemExit(f'missing {key}')
-              return match.group(1)
-
-          def read_image_tag(text):
-              match = re.search(r'^image:\n(?:.*\n)*?  tag:\s*"?([^\n"]+)"?', text, re.M)
-              if not match:
-                  raise SystemExit('missing image.tag')
-              return match.group(1)
-
-          chart = Path('chart/Chart.yaml').read_text()
-          values = Path('chart/values.yaml').read_text()
-          app_version = read_field(chart, 'appVersion')
-          image_tag = read_image_tag(values)
-
-          if version != app_version:
-              raise SystemExit(f'tag version {version} does not match chart appVersion {app_version}')
-          if version != image_tag:
-              raise SystemExit(f'tag version {version} does not match chart image.tag {image_tag}')
-          PY
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -165,4 +131,92 @@ jobs:
               --notes-file /tmp/docker-release-notes.md \
               /tmp/docker-release.json \
               /tmp/docker-release.json.bundle
+          fi
+
+      - name: Install helm-docs
+        env:
+          HELM_DOCS_VERSION: v1.14.2
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/helm-docs.tar.gz \
+            "https://github.com/norwoodj/helm-docs/releases/download/${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION#v}_Linux_x86_64.tar.gz"
+          tar -xzf /tmp/helm-docs.tar.gz -C /tmp helm-docs
+          sudo install -m 0755 /tmp/helm-docs /usr/local/bin/helm-docs
+
+      - name: Open chart bump PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          BRANCH="chore/chart-appversion-v${VERSION}"
+          git fetch origin master
+          git checkout -B "${BRANCH}" origin/master
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ['VERSION']
+
+          chart_path = Path('chart/Chart.yaml')
+          values_path = Path('chart/values.yaml')
+
+          chart = chart_path.read_text()
+          chart = re.sub(r'(?m)^appVersion:\s*.*$', f'appVersion: {version}', chart, count=1)
+          chart = re.sub(
+              r'(image:\s*\n(?:.*\n)*?\s*image:\s*ghcr\.io/turgon37/multicast-relay:)[^\n"]+',
+              lambda match: f'{match.group(1)}{version}',
+              chart,
+              count=1,
+          )
+          chart_path.write_text(chart)
+
+          values = values_path.read_text()
+          values = re.sub(
+              r'(?m)^(\s*tag:\s*).+$',
+              lambda match: f'{match.group(1)}{version}',
+              values,
+              count=1,
+          )
+          values_path.write_text(values)
+          PY
+
+          helm-docs chart
+
+          git add chart/Chart.yaml chart/values.yaml chart/README.md
+          if git diff --cached --quiet; then
+            echo "no chart bump changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(chart): bump appVersion to ${VERSION}"
+          git push --force-with-lease origin "${BRANCH}"
+
+          PR_NUMBER="$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          BODY=$(cat <<EOF
+          Automated chart update after Docker image release v${VERSION}.
+
+          This PR keeps the Helm chart aligned with the published image version:
+
+          - chart/Chart.yaml appVersion
+          - chart/values.yaml image.tag
+          - chart/README.md generated documentation
+
+          The Docker image was published from tag v${VERSION}.
+          EOF
+          )
+          if [ -n "${PR_NUMBER}" ]; then
+            gh pr edit "${PR_NUMBER}" \
+              --title "chore(chart): bump appVersion to ${VERSION}" \
+              --body "${BODY}"
+          else
+            gh pr create \
+              --base master \
+              --head "${BRANCH}" \
+              --title "chore(chart): bump appVersion to ${VERSION}" \
+              --body "${BODY}"
           fi
