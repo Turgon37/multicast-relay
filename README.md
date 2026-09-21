@@ -1,11 +1,38 @@
 Relay broadcast and multicast packets between interfaces
 --------------------------------------------------------
 
+[![CI](https://github.com/Turgon37/multicast-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/Turgon37/multicast-relay/actions/workflows/ci.yml)
+[![Chart CI](https://github.com/Turgon37/multicast-relay/actions/workflows/chart-ci.yml/badge.svg)](https://github.com/Turgon37/multicast-relay/actions/workflows/chart-ci.yml)
 [![Docker image](https://github.com/Turgon37/multicast-relay/actions/workflows/docker-image.yml/badge.svg)](https://github.com/Turgon37/multicast-relay/actions/workflows/docker-image.yml)
 [![Helm chart](https://github.com/Turgon37/multicast-relay/actions/workflows/helm-chart.yml/badge.svg)](https://github.com/Turgon37/multicast-relay/actions/workflows/helm-chart.yml)
 [![License](https://img.shields.io/github/license/Turgon37/multicast-relay)](https://github.com/Turgon37/multicast-relay/blob/master/LICENSE)
 
 See the [changelog](CHANGELOG.md) for the relay history and release notes.
+
+## Delivery
+
+Releases are published from `master` only.
+
+- Pull requests run validation through `CI` and `Chart CI`.
+- Merges to `master` can publish the Docker image and Helm chart automatically.
+- Each publication also creates a GitHub Release: `v<image-version>` for Docker and `chart-v<chart-version>` for the Helm chart.
+- The Docker image is pushed to GHCR and signed with Cosign.
+- The Helm chart is packaged as an OCI artifact on GHCR, signed with Cosign, published with Artifact Hub metadata, and the GitHub Release carries signed release metadata and the packaged chart asset signature.
+- Renovate opens dependency update PRs but does not publish releases.
+- The Docker image also ships `ssdp-discover` as a small SSDP/multicast debug helper.
+
+Recommended GitHub branch protection for `master`:
+
+- Require pull requests before merging.
+- Require at least one review.
+- Require review approval from code owners.
+- Dismiss stale approvals when new commits are pushed.
+- Require status checks to pass before merging.
+- Require the `CI` check.
+- Require the `Chart CI` check.
+- Restrict who can push to `master`.
+- Disable force pushes.
+- Optionally require linear history.
 
 Useful, for example, if you have Sonos speakers on one interface, or VLAN,
 and you want to be able to control them from devices on a different
@@ -40,7 +67,7 @@ flags below, the minimum number of interfaces drops to >= 1.
 A.B.C.D/M is only to be relayed to specific interfaces. This can be useful
 in applications such as a hotel where relaying for one guest room may only
 discover device(s) that are in the same guest room. See example file
-`ifFilter.json`.
+[`examples/ifFilter.json`](examples/ifFilter.json).
 
 `--relay` specifies additional broadcast or multicast addresses to relay.
 
@@ -103,6 +130,6 @@ flag also encourages logging to stdout as well as to the syslog.
 
 multicast-relay.py requires the python 'netifaces' package. Install via
 'easy_install netifaces' or 'pip install netifaces'. For ZeroShell users,
-please review [README-ZeroShell](README-ZeroShell.md) for further instructions.
+please review [README-ZeroShell](docs/legacy/README-ZeroShell.md) for further instructions.
 
 Al Smith <ajs@aeschi.eu>
