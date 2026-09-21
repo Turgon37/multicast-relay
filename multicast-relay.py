@@ -386,7 +386,6 @@ class PacketRelay():
         bpfB = 0x10
         bpfAbs = 0x20
         bpfInd = 0x40
-        bpfImm = 0x00
         bpfMsh = 0xa0
         bpfJeq = 0x10
         bpfK = 0x00
@@ -923,7 +922,7 @@ class PacketRelay():
         udpHeader = ipPacket[ipHeaderLength:ipHeaderLength+8]
         data      = ipPacket[ipHeaderLength+8:]
         dontFragment = ipPacket[6]
-        if type(dontFragment) == str:
+        if isinstance(dontFragment, str):
             dontFragment = ord(dontFragment)
         dontFragment = (dontFragment & 0x40) >> 6
 
@@ -1693,7 +1692,7 @@ def main():
             (addr, port) = relay[0].split(':')
             _ = PacketRelay.ip2long(addr)
             port = int(port)
-        except:
+        except (OSError, ValueError):
             errorMessage = '%s:%s: Expecting --relay A.B.C.D:P, where A.B.C.D is a multicast or broadcast IP address and P is a valid port number' % relay
             if args.foreground:
                 print(errorMessage)

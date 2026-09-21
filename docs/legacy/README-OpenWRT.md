@@ -7,4 +7,3 @@ Note that only interfaces that have IPv4 addresses configured may be used
 as parameters to --interfaces. If you have bridges configured then you will
 probably need to specify the bridge names and not the underlying interface
 names.
-
