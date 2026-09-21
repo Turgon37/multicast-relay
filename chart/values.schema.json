@@ -115,6 +115,9 @@
         "receiveLocalOutgoing": {
           "type": "boolean"
         },
+        "mdnsInspect": {
+          "type": "boolean"
+        },
         "noRemoteRelay": {
           "type": "boolean"
         },
@@ -139,6 +142,7 @@
         "transmitUdp",
         "receiveUdp",
         "receiveLocalOutgoing",
+        "mdnsInspect",
         "noRemoteRelay",
         "verbose",
         "debug",

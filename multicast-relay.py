@@ -262,7 +262,8 @@ class PacketRelay():
     def __init__(self, interfaces, noTransmitInterfaces, ifFilter, waitForIP, ttl,
                  oneInterface, homebrewNetifaces, ifNameStructLen, allowNonEther,
                  ssdpUnicastAddr, mdnsForceUnicast, masquerade, listen, remote,
-                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, receiveUdp, receiveLocalOutgoing, logger, metrics):
+                 remotePort, remoteRetry, noRemoteRelay, aes, debug, udp, receiveUdp,
+                 receiveLocalOutgoing, mdnsInspect, logger, metrics):
         self.interfaces = interfaces
         self.noTransmitInterfaces = noTransmitInterfaces or []
 
@@ -281,6 +282,7 @@ class PacketRelay():
         self.udp = udp
         self.receiveUdp = receiveUdp
         self.receiveLocalOutgoing = receiveLocalOutgoing
+        self.mdnsInspect = mdnsInspect
         self.running = True
 
         self.nif = Netifaces(homebrewNetifaces, ifNameStructLen)
@@ -816,6 +818,48 @@ class PacketRelay():
         return '%d %s%s? %s (%d)' % (identifier, queryType, queryMarker, name, len(data))
 
     @staticmethod
+    def dnsRecordTypeName(rrtype):
+        recordTypes = {1: 'A', 12: 'PTR', 16: 'TXT', 28: 'AAAA', 33: 'SRV', 41: 'OPT', 47: 'NSEC', 255: 'ANY'}
+        return recordTypes.get(rrtype, 'TYPE%d' % rrtype)
+
+    @staticmethod
+    def dnsClassName(rrclass):
+        classNames = {1: 'IN'}
+        className = classNames.get(rrclass & 0x7fff, 'CLASS%d' % (rrclass & 0x7fff))
+        return '%s/%s' % (className, rrclass & 0x8000 and 'QU' or 'QM')
+
+    @staticmethod
+    def mdnsDescription(data):
+        if len(data) < 12:
+            raise ValueError('truncated DNS header')
+
+        (identifier, flags, questions, answers, authorities, additionals) = struct.unpack('!6H', data[:12])
+        qr = flags & 0x8000 and 'R' or 'Q'
+        opcodeNames = {0: 'QUERY', 1: 'IQUERY', 2: 'STATUS', 4: 'NOTIFY', 5: 'UPDATE'}
+        opcode = opcodeNames.get((flags >> 11) & 0x0f, 'OPCODE%d' % ((flags >> 11) & 0x0f))
+
+        parts = ['ID=%d' % identifier,
+                 'QR=%s' % qr,
+                 'OPCODE=%s' % opcode,
+                 'QDCOUNT=%d' % questions,
+                 'ANCOUNT=%d' % answers,
+                 'NSCOUNT=%d' % authorities,
+                 'ARCOUNT=%d' % additionals]
+
+        offset = 12
+        for index in range(questions):
+            (name, offset) = PacketRelay.dnsName(data, offset)
+            if offset + 4 > len(data):
+                raise ValueError('truncated DNS question')
+            (queryType, queryClass) = struct.unpack('!HH', data[offset:offset + 4])
+            offset += 4
+            parts.append('QNAME[%d]=%s' % (index, name))
+            parts.append('QTYPE[%d]=%s' % (index, PacketRelay.dnsRecordTypeName(queryType)))
+            parts.append('QCLASS[%d]=%s' % (index, PacketRelay.dnsClassName(queryClass)))
+
+        return ' '.join(parts)
+
+    @staticmethod
     def packetDescription(data):
         if isinstance(data, str):
             data = data.encode('latin-1')
@@ -1106,6 +1150,13 @@ class PacketRelay():
         ipHeaderLength = (struct.unpack('B', firstDataByte)[0] & 0x0f) * 4
         srcPort = struct.unpack('!H', data[ipHeaderLength+0:ipHeaderLength+2])[0]
         dstPort = struct.unpack('!H', data[ipHeaderLength+2:ipHeaderLength+4])[0]
+
+        if getattr(self, 'mdnsInspect', False) and dstAddr == PacketRelay.MDNS_MCAST_ADDR and dstPort == PacketRelay.MDNS_MCAST_PORT:
+            try:
+                self.logger.debug('mDNS received on %s: %s' % (receivingInterface or receivingSource,
+                                                               PacketRelay.mdnsDescription(data[ipHeaderLength+8:])))
+            except ValueError as e:
+                self.logger.debug('mDNS parse failed on %s: %s' % (receivingInterface or receivingSource, str(e)))
 
         if receivingSource != 'remote' and self.isOwnUdpPacket(srcAddr, srcPort):
             self.metrics.packetDropped('own_udp_packet')
@@ -1584,6 +1635,8 @@ def main():
                         help='Receive multicast packets using UDP sockets instead of raw packet sockets.')
     parser.add_argument('--receiveLocalOutgoing', action='store_true',
                         help='Receive locally generated multicast packets using AF_PACKET sockets.')
+    parser.add_argument('--mdnsInspect', action='store_true',
+                        help='Inspect mDNS packets and log RFC DNS fields (QR, OPCODE, QNAME, QTYPE).')
     parser.add_argument('--masquerade', nargs='+',
                         help='Masquerade outbound packets from these interface(s).')
     parser.add_argument('--wait', action='store_true',
@@ -1680,6 +1733,7 @@ def main():
                               udp                  = args.transmitUdp,
                               receiveUdp           = args.receiveUdp,
                               receiveLocalOutgoing = args.receiveLocalOutgoing,
+                              mdnsInspect          = args.mdnsInspect,
                               logger               = logger,
                               metrics              = metrics)
 

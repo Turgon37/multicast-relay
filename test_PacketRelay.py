@@ -29,6 +29,23 @@ def test_packet_description_mdns_query():
         'IP 10.1.3.254.5353 > 224.0.0.251.5353: 0 A (QM)? MiDeskLamp1S-70EB.local. (41)'
 
 
+def test_mdns_description_extracts_rfc_fields():
+    packet = bytes.fromhex(
+        '4500004500000000ff1100000a0103fee00000fb'
+        '14e914e900310000'
+        '000000000001000000000000'
+        '114d694465736b4c616d7031532d37304542056c6f63616c0000018001'
+    )
+
+    description = mr.PacketRelay.mdnsDescription(packet[28:])
+
+    assert 'QR=Q' in description
+    assert 'OPCODE=QUERY' in description
+    assert 'QNAME[0]=MiDeskLamp1S-70EB.local.' in description
+    assert 'QTYPE[0]=A' in description
+    assert 'QCLASS[0]=IN/QU' in description
+
+
 def test_packet_description_malformed_packet():
     assert mr.PacketRelay.packetDescription(b'\x45') == 'Malformed IPv4 packet (1 bytes)'
 

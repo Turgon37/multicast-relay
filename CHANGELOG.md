@@ -9,6 +9,20 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.30] - 2026-09-22
+
+Chart version `0.1.30`, using multicast-relay image version `1.0.10`.
+
+- Bump the chart version after adding the optional `--mdnsInspect` relay flag.
+- Keep the chart metadata, default image tag, values schema and release docs aligned with the current application image version.
+
+## [0.1.29] - 2026-09-22
+
+Chart version `0.1.29`, using multicast-relay image version `1.0.10`.
+
+- Add the optional mDNS RFC inspector behind `--mdnsInspect` for debugging local multicast behavior.
+- Keep the chart metadata, default image tag, values schema and release docs aligned with the new application image version.
+
 ## [0.1.28] - 2026-09-22
 
 Chart version `0.1.28`, using multicast-relay image version `1.0.9`.
