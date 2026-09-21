@@ -2,8 +2,8 @@ apiVersion: v2
 name: multicast-relay
 description: Relay multicast and broadcast UDP packets between networks.
 type: application
-version: 0.1.27
-appVersion: 1.0.8
+version: 0.1.28
+appVersion: 1.0.9
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/links: |
@@ -16,10 +16,10 @@ annotations:
       url: https://github.com/Turgon37/multicast-relay/pkgs/container/multicast-relay
   artifacthub.io/images: |
     - name: multicast-relay
-      image: ghcr.io/turgon37/multicast-relay:1.0.8
+      image: ghcr.io/turgon37/multicast-relay:1.0.9
   artifacthub.io/changes: |
     - kind: changed
-      description: Fix Ruff regressions in the Python runtime and keep the chart aligned with the new image version.
+      description: Publish the latest base image updates and align the chart with the new application image version.
       links:
         - name: Changelog
           url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md

@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.28] - 2026-09-22
+
+Chart version `0.1.28`, using multicast-relay image version `1.0.9`.
+
+- Publish the latest base image updates.
+- Keep the chart metadata, default image tag and release docs aligned with the new application image version.
+
 ## [0.1.27] - 2026-09-21
 
 Chart version `0.1.27`, using multicast-relay image version `1.0.8`.
