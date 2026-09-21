@@ -1,0 +1,190 @@
+name: Chart CI
+
+on:
+  pull_request:
+    paths:
+      - chart/**
+      - artifacthub-repo.yml
+      - .github/workflows/chart-ci.yml
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint and validate chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Install helm-docs
+        env:
+          HELM_DOCS_VERSION: v1.14.2
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/helm-docs.tar.gz \
+            "https://github.com/norwoodj/helm-docs/releases/download/${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION#v}_Linux_x86_64.tar.gz"
+          tar -xzf /tmp/helm-docs.tar.gz -C /tmp helm-docs
+          sudo install -m 0755 /tmp/helm-docs /usr/local/bin/helm-docs
+
+      - name: Install kubeconform
+        env:
+          KUBECONFORM_VERSION: v0.8.0
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          sudo install -m 0755 /tmp/kubeconform /usr/local/bin/kubeconform
+
+      - name: Validate chart metadata
+        run: |
+          set -euo pipefail
+          CHART_VERSION="$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          def read_field(text, key):
+              match = re.search(rf'^{key}:\s*"?([^\n"]+)"?', text, re.M)
+              if not match:
+                  raise SystemExit(f'missing {key}')
+              return match.group(1)
+
+          def read_image_tag(text):
+              match = re.search(r'^image:\n(?:.*\n)*?  tag:\s*"?([^\n"]+)"?', text, re.M)
+              if not match:
+                  raise SystemExit('missing image.tag')
+              return match.group(1)
+
+          chart = Path('chart/Chart.yaml').read_text()
+          values = Path('chart/values.yaml').read_text()
+          readme = Path('chart/README.md').read_text()
+
+          version = read_field(chart, 'version')
+          app_version = read_field(chart, 'appVersion')
+          image_tag = read_image_tag(values)
+          image_ref = f'ghcr.io/turgon37/multicast-relay:{app_version}'
+
+          if image_tag != app_version:
+              raise SystemExit(f'image tag {image_tag} does not match appVersion {app_version}')
+          if image_ref not in chart:
+              raise SystemExit(f'chart metadata does not reference image {image_ref}')
+          if f'--version {version}' not in readme:
+              raise SystemExit(f'chart README does not reference version {version}')
+
+          print(version)
+          PY
+          )"
+          test -n "$CHART_VERSION"
+
+      - name: Generate chart README
+        run: |
+          helm-docs chart
+          git diff --exit-code -- chart/README.md
+
+      - name: helm lint (defaults)
+        run: helm lint chart -f chart/ci/lint-values.yaml
+
+      - name: helm lint (all features)
+        run: |
+          cat > /tmp/values-full.yaml <<'EOF'
+          relay:
+            interfaces:
+              - eth0
+            noTransmitInterfaces:
+              - eth1
+            remote:
+              addresses:
+                - 10.0.0.10
+              port: 1900
+            wait: true
+            transmitUdp: true
+            receiveUdp: true
+            receiveLocalOutgoing: true
+            noRemoteRelay: true
+            verbose: true
+            debug: true
+          metrics:
+            enabled: true
+            podMonitor:
+              enabled: true
+              namespace: monitoring
+              labels:
+                release: kube-prometheus-stack
+              interval: 30s
+              scrapeTimeout: 10s
+              path: /metrics
+          grafanaDashboard:
+            enabled: true
+            namespace: monitoring
+            labels:
+              release: kube-prometheus-stack
+            annotations:
+              k8s-sidecar-target-directory: /tmp/dashboards
+            sidecarLabel: grafana_dashboard
+            sidecarLabelValue: "1"
+          networkPolicy:
+            enabled: true
+            flavor: cilium
+            cilium:
+              ingress:
+                - fromEntities:
+                    - cluster
+              egress:
+                - toEntities:
+                    - cluster
+          EOF
+          helm lint chart -f chart/ci/lint-values.yaml -f /tmp/values-full.yaml
+
+      - name: Render and validate manifests
+        run: |
+          set -euo pipefail
+          CHART=chart
+          mkdir -p /tmp/rendered
+
+          render() {
+            local name="$1"
+            shift
+            helm template "multicast-relay" "$CHART" "$@" > "/tmp/rendered/${name}.yaml"
+          }
+
+          render defaults --values chart/ci/lint-values.yaml
+          render metrics --values chart/ci/lint-values.yaml --set metrics.enabled=true --set metrics.podMonitor.enabled=true
+          render dashboard --values chart/ci/lint-values.yaml --set grafanaDashboard.enabled=true
+          render np-kubernetes --values chart/ci/lint-values.yaml --set networkPolicy.enabled=true --set networkPolicy.flavor=kubernetes --set networkPolicy.ingress[0].from[0].podSelector.matchLabels.app=foo
+          render np-cilium --values chart/ci/lint-values.yaml --set networkPolicy.enabled=true --set networkPolicy.flavor=cilium --set networkPolicy.cilium.enableDefaultDeny.ingress=true
+          render remote --values chart/ci/lint-values.yaml --set relay.remote.addresses[0]=10.0.0.10 --set relay.remote.port=1900
+          render all --values chart/ci/lint-values.yaml --set relay.noTransmitInterfaces[0]=eth1 --set relay.remote.addresses[0]=10.0.0.10 --set relay.remote.port=1900 --set relay.wait=true --set relay.transmitUdp=true --set relay.receiveUdp=true --set relay.receiveLocalOutgoing=true --set relay.noRemoteRelay=true --set relay.verbose=true --set relay.debug=true --set metrics.enabled=true --set metrics.podMonitor.enabled=true --set grafanaDashboard.enabled=true --set networkPolicy.enabled=true --set networkPolicy.flavor=cilium --set networkPolicy.cilium.enableDefaultDeny.ingress=true
+
+          if grep -q '^kind: PodMonitor$' /tmp/rendered/defaults.yaml; then
+            echo "defaults render unexpectedly contains a PodMonitor"
+            exit 1
+          fi
+          grep -q '^kind: PodMonitor$' /tmp/rendered/metrics.yaml
+          if grep -q '^kind: ConfigMap$' /tmp/rendered/defaults.yaml; then
+            echo "defaults render unexpectedly contains a ConfigMap"
+            exit 1
+          fi
+          grep -q '^kind: ConfigMap$' /tmp/rendered/dashboard.yaml
+          grep -q 'grafana_dashboard: "1"' /tmp/rendered/dashboard.yaml
+          grep -q '^kind: NetworkPolicy$' /tmp/rendered/np-kubernetes.yaml
+          grep -q '^kind: CiliumNetworkPolicy$' /tmp/rendered/np-cilium.yaml
+
+          for f in /tmp/rendered/*.yaml; do
+            echo "::group::kubeconform $(basename "$f")"
+            kubeconform \
+              -strict \
+              -ignore-missing-schemas \
+              -kubernetes-version master \
+              -summary "$f"
+            echo "::endgroup::"
+          done

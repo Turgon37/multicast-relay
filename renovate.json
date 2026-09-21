@@ -44,6 +44,15 @@
       ],
       "depNameTemplate": "oras-project/oras",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/chart-ci\\.yml$/"],
+      "matchStrings": [
+        "KUBECONFORM_VERSION:\\s*(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "yannh/kubeconform",
+      "datasourceTemplate": "github-releases"
     }
   ]
 }

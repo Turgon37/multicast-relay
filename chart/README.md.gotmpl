@@ -1,0 +1,56 @@
+# {{ template "chart.name" . }}
+
+![Version: {{ .Version }}](https://img.shields.io/badge/Version-{{ .Version }}-informational?style=flat-square)
+![Type: {{ .Type }}](https://img.shields.io/badge/Type-{{ .Type }}-informational?style=flat-square)
+![AppVersion: {{ .AppVersion }}](https://img.shields.io/badge/AppVersion-{{ .AppVersion }}-informational?style=flat-square)
+
+{{ template "chart.description" . }}
+
+## Installing the Chart
+
+The chart is published only as an OCI artifact on GHCR.
+
+Install the chart with the release name `multicast-relay` from GHCR:
+
+```console
+helm upgrade --install multicast-relay \
+  oci://ghcr.io/turgon37/charts/multicast-relay \
+  --namespace prod-multicastrelay \
+  --create-namespace \
+  --version {{ .Version }} \
+  --set relay.interfaces[0]=eth0
+```
+
+Deploy the relay in the target namespace with:
+
+```sh
+helm upgrade --install multicast-relay ./chart --namespace prod-multicastrelay --create-namespace
+```
+
+Configure `relay.interfaces`, `relay.remote`, the boolean relay options,
+`livenessPort`, probes, image, security context and resources in `values.yaml`
+or with an additional values file. `--k8sport` is generated from
+`livenessPort`; do not add it to `relay.extraArgs`.
+
+`relay.interfaces` has no default and is required. `relay.remote` is optional;
+when `relay.remote.addresses` is configured, `relay.remote.port` is required.
+The `chart/ci/lint-values.yaml` file supplies a placeholder interface for CI
+linting only and must not be used for deployment.
+
+Enable `networkPolicy` with the `kubernetes` or `cilium` flavor and provide its
+ingress/egress rules when network isolation is required.
+
+Set both `metrics.enabled` and `metrics.podMonitor.enabled` to `true` to
+create a Prometheus Operator `PodMonitor` targeting the relay's `/metrics`
+endpoint.
+
+Set `grafanaDashboard.enabled` to `true` to create a ConfigMap containing a
+Grafana dashboard for the relay metrics. The ConfigMap is labeled for common
+Grafana sidecar loaders and the label key/value, namespace, labels and
+annotations are configurable.
+
+`namespaceOverride` is optional. Leave it empty to use the Helm release namespace.
+
+## Values
+
+{{ template "chart.valuesTable" . }}

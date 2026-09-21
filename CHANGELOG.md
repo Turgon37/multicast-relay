@@ -9,6 +9,13 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [0.1.27] - 2026-09-21
+
+Chart version `0.1.27`, using multicast-relay image version `1.0.8`.
+
+- Fix Ruff regressions in the Python runtime.
+- Keep the chart metadata and default image tag aligned with the new application image version.
+
 ## [0.1.26] - 2026-09-08
 
 Chart version `0.1.26`, using multicast-relay image version `1.0.7`.
