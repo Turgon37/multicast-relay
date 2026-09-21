@@ -61,10 +61,16 @@ jobs:
                   raise SystemExit(f'missing {key}')
               return match.group(1)
 
+          def read_image_tag(text):
+              match = re.search(r'^image:\n(?:.*\n)*?  tag:\s*"?([^\n"]+)"?', text, re.M)
+              if not match:
+                  raise SystemExit('missing image.tag')
+              return match.group(1)
+
           chart = Path('chart/Chart.yaml').read_text()
           values = Path('chart/values.yaml').read_text()
           app_version = read_field(chart, 'appVersion')
-          image_tag = read_field(values, 'tag')
+          image_tag = read_image_tag(values)
 
           if version != app_version:
               raise SystemExit(f'tag version {version} does not match chart appVersion {app_version}')
