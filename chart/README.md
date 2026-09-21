@@ -1,5 +1,11 @@
 # multicast-relay
 
+![Version: 0.1.26](https://img.shields.io/badge/Version-0.1.26-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+![AppVersion: 1.0.7](https://img.shields.io/badge/AppVersion-1.0.7-informational?style=flat-square)
+
+Relay multicast and broadcast UDP packets between networks.
+
 ## Installing the Chart
 
 The chart is published only as an OCI artifact on GHCR.
@@ -49,72 +55,73 @@ annotations are configurable.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `nameOverride` | string | `""` | Overrides the chart name used in resource names and labels. |
-| `fullnameOverride` | string | `""` | Fully overrides the generated release resource name. |
-| `namespaceOverride` | string | `""` | Overrides the Helm release namespace for chart resources. |
-| `replicaCount` | int | `1` | Number of relay pods. Use `1` when host networking shares the same interface. |
-| `strategy.type` | string | `"Recreate"` | Deployment strategy; `Recreate` or `RollingUpdate`. |
-| `image.repository` | string | `"ghcr.io/turgon37/multicast-relay"` | Container image repository. |
-| `image.tag` | string | `"1.0.7"` | Container image tag. |
-| `image.pullPolicy` | string | `"IfNotPresent"` | Kubernetes image pull policy. |
-| `relay.interfaces` | list | `[]` | Required interfaces passed to `--interfaces`. |
-| `relay.noTransmitInterfaces` | list | `[]` | Listen-only interfaces passed to `--noTransmitInterfaces`. |
-| `relay.remote.addresses` | list | `[]` | Remote relay addresses passed to `--remote`. |
-| `relay.remote.port` | int or null | `null` | Required remote relay port when `relay.remote.addresses` is set. |
-| `relay.wait` | bool | `false` | Adds `--wait` to wait for interface IPv4 addresses. |
-| `relay.transmitUdp` | bool | `false` | Adds `--transmitUdp` instead of using raw sockets for transmission. |
-| `relay.receiveUdp` | bool | `false` | Adds `--receiveUdp` to receive multicast traffic through UDP sockets. |
-| `relay.receiveLocalOutgoing` | bool | `false` | Adds `--receiveLocalOutgoing` to capture locally generated multicast traffic through AF_PACKET sockets. |
-| `relay.noRemoteRelay` | bool | `false` | Adds `--noRemoteRelay`. |
-| `relay.verbose` | bool | `false` | Adds `--verbose`. |
-| `relay.debug` | bool | `false` | Adds `--debug`. |
-| `relay.extraArgs` | list | `[]` | Additional relay command-line arguments not exposed as dedicated values. |
-| `livenessPort` | int | `10015` | Port used for `--k8sport` and HTTP liveness/readiness probes. |
-| `metrics.enabled` | bool | `false` | Adds `--metrics-port` and exposes the named container port `metrics`. |
-| `metrics.port` | int | `9090` | Prometheus metrics port. |
-| `metrics.podMonitor.enabled` | bool | `false` | Creates a Prometheus Operator `PodMonitor`; requires `metrics.enabled`. |
-| `metrics.podMonitor.namespace` | string | `""` | Namespace containing the `PodMonitor`; defaults to the release namespace. |
-| `metrics.podMonitor.labels` | object | `{}` | Additional labels for the `PodMonitor`. |
-| `metrics.podMonitor.interval` | string | `"15s"` | Prometheus scrape interval. |
-| `metrics.podMonitor.scrapeTimeout` | string | `""` | Optional Prometheus scrape timeout. |
-| `metrics.podMonitor.path` | string | `"/metrics"` | Metrics HTTP path. |
-| `grafanaDashboard.enabled` | bool | `false` | Creates a ConfigMap containing a Grafana dashboard for multicast-relay metrics. |
-| `grafanaDashboard.namespace` | string | `""` | Namespace containing the dashboard ConfigMap; defaults to the release namespace. |
-| `grafanaDashboard.labels` | object | `{}` | Additional labels for the dashboard ConfigMap. |
-| `grafanaDashboard.annotations` | object | `{}` | Additional annotations for the dashboard ConfigMap. |
-| `grafanaDashboard.sidecarLabel` | string | `"grafana_dashboard"` | Label key used by Grafana sidecar dashboard loaders. |
-| `grafanaDashboard.sidecarLabelValue` | string | `"1"` | Label value used by Grafana sidecar dashboard loaders. |
-| `env` | object | `{"TZ":"Europe/Paris"}` | Environment variables added to the relay container. |
-| `extraEnv` | list | `[]` | Additional complete Kubernetes environment variable entries. |
-| `hostNetwork` | bool | `true` | Enables host networking for multicast packet reception and emission. |
-| `dnsPolicy` | string | `"ClusterFirstWithHostNet"` | Pod DNS policy. |
-| `terminationGracePeriodSeconds` | int | `30` | Grace period Kubernetes gives the relay after `SIGTERM`. |
-| `podAnnotations` | object | `{}` | Annotations added to the pod. |
-| `podLabels` | object | `{}` | Labels added to the pod. |
-| `containerSecurityContext` | object | `{"capabilities":{"add":["NET_RAW","NET_ADMIN"]}}` | Container security context; raw socket capabilities are required by the default transport. |
-| `resources` | object | `{}` | Kubernetes resource requests and limits. |
-| `probes.liveness.enabled` | bool | `true` | Enables the HTTP liveness probe on `livenessPort`. |
-| `probes.liveness.path` | string | `"/"` | Liveness probe HTTP path. |
-| `probes.liveness.initialDelaySeconds` | int | `10` | Delay before the liveness probe starts. |
-| `probes.liveness.periodSeconds` | int | `10` | Liveness probe period. |
-| `probes.liveness.timeoutSeconds` | int | `2` | Liveness probe timeout. |
-| `probes.liveness.successThreshold` | int | `1` | Consecutive liveness successes required. |
-| `probes.liveness.failureThreshold` | int | `3` | Consecutive liveness failures before restart. |
-| `probes.readiness.enabled` | bool | `false` | Enables the HTTP readiness probe on `livenessPort`. |
-| `probes.readiness.path` | string | `"/"` | Readiness probe HTTP path. |
-| `probes.readiness.initialDelaySeconds` | int | `10` | Delay before the readiness probe starts. |
-| `probes.readiness.periodSeconds` | int | `10` | Readiness probe period. |
-| `probes.readiness.timeoutSeconds` | int | `2` | Readiness probe timeout. |
-| `probes.readiness.successThreshold` | int | `1` | Consecutive readiness successes required. |
-| `probes.readiness.failureThreshold` | int | `3` | Consecutive readiness failures before unready. |
-| `nodeSelector` | object | `{}` | Node selector for pod scheduling. |
-| `tolerations` | list | `[]` | Tolerations for pod scheduling. |
-| `affinity` | object | `{}` | Affinity and anti-affinity rules. |
-| `networkPolicy.enabled` | bool | `false` | Creates a network policy for the relay pods. |
-| `networkPolicy.flavor` | string | `"kubernetes"` | Policy implementation: `kubernetes` or `cilium`. |
-| `networkPolicy.policyTypes` | list | `[]` | Explicit Kubernetes policy types; inferred from ingress/egress when empty. |
-| `networkPolicy.ingress` | list | `[]` | Kubernetes `NetworkPolicy` ingress rules. |
-| `networkPolicy.egress` | list | `[]` | Kubernetes `NetworkPolicy` egress rules. |
-| `networkPolicy.cilium.ingress` | list | `[]` | Cilium ingress rules. |
-| `networkPolicy.cilium.egress` | list | `[]` | Cilium egress rules. |
-| `networkPolicy.cilium.enableDefaultDeny` | object | `{}` | Cilium default-deny settings; Cilium requires at least one rule or this setting when enabled. |
+| affinity | object | `{}` | Affinity and anti-affinity rules. |
+| containerSecurityContext.capabilities.add[0] | string | `"NET_RAW"` | Required by raw sockets. |
+| containerSecurityContext.capabilities.add[1] | string | `"NET_ADMIN"` | Required to allow multicast socket configuration on some systems. |
+| dnsPolicy | string | `"ClusterFirstWithHostNet"` | Pod DNS policy. |
+| env.TZ | string | `"Europe/Paris"` | Environment variables added to the relay container. |
+| extraEnv | list | `[]` | Additional complete Kubernetes environment variable entries. |
+| fullnameOverride | string | `""` | Fully overrides the generated release resource name. |
+| grafanaDashboard.annotations | object | `{}` | Additional annotations for the dashboard ConfigMap. |
+| grafanaDashboard.enabled | bool | `false` | Creates a ConfigMap containing a Grafana dashboard for multicast-relay metrics. |
+| grafanaDashboard.labels | object | `{}` | Additional labels for the dashboard ConfigMap. |
+| grafanaDashboard.namespace | string | `""` | Namespace containing the dashboard ConfigMap; defaults to the release namespace. |
+| grafanaDashboard.sidecarLabel | string | `"grafana_dashboard"` | Label key used by Grafana sidecar dashboard loaders. |
+| grafanaDashboard.sidecarLabelValue | string | `"1"` | Label value used by Grafana sidecar dashboard loaders. |
+| hostNetwork | bool | `true` | Enables host networking for multicast packet reception and emission. |
+| image.pullPolicy | string | `"IfNotPresent"` | Kubernetes image pull policy. |
+| image.repository | string | `"ghcr.io/turgon37/multicast-relay"` | Container image repository. |
+| image.tag | string | `"1.0.7"` | Container image tag. |
+| livenessPort | int | `10015` | Port used for `--k8sport` and HTTP liveness/readiness probes. |
+| metrics.enabled | bool | `false` | Adds `--metrics-port` and exposes the named container port metrics. |
+| metrics.podMonitor.enabled | bool | `false` | Creates a Prometheus Operator PodMonitor; requires metrics.enabled. |
+| metrics.podMonitor.interval | string | `"15s"` | Prometheus scrape interval. |
+| metrics.podMonitor.labels | object | `{}` | Additional labels for the PodMonitor. |
+| metrics.podMonitor.namespace | string | `""` | Namespace containing the PodMonitor; defaults to the release namespace. |
+| metrics.podMonitor.path | string | `"/metrics"` | Metrics HTTP path. |
+| metrics.podMonitor.scrapeTimeout | string | `""` | Optional Prometheus scrape timeout. |
+| metrics.port | int | `9090` | Prometheus metrics port. |
+| nameOverride | string | `""` | Overrides the chart name used in resource names and labels. |
+| namespaceOverride | string | `""` | Overrides the Helm release namespace for chart resources. |
+| networkPolicy.cilium.egress | list | `[]` | Cilium egress rules. |
+| networkPolicy.cilium.enableDefaultDeny | object | `{}` | Cilium default-deny settings. |
+| networkPolicy.cilium.ingress | list | `[]` | Cilium ingress rules. |
+| networkPolicy.egress | list | `[]` | Kubernetes NetworkPolicy egress rules. |
+| networkPolicy.enabled | bool | `false` | Creates a network policy for the relay pods. |
+| networkPolicy.flavor | string | `"kubernetes"` | Policy implementation: kubernetes or cilium. |
+| networkPolicy.ingress | list | `[]` | Kubernetes NetworkPolicy ingress rules. |
+| networkPolicy.policyTypes | list | `[]` | Explicit Kubernetes policy types; inferred from ingress/egress when empty. |
+| nodeSelector | object | `{}` | Node selector for pod scheduling. |
+| podAnnotations | object | `{}` | Annotations added to the pod. |
+| podLabels | object | `{}` | Labels added to the pod. |
+| probes.liveness.enabled | bool | `true` | Enables the HTTP liveness probe on livenessPort. |
+| probes.liveness.failureThreshold | int | `3` | Consecutive liveness failures before restart. |
+| probes.liveness.initialDelaySeconds | int | `10` | Delay before the liveness probe starts. |
+| probes.liveness.path | string | `"/"` | Liveness probe HTTP path. |
+| probes.liveness.periodSeconds | int | `10` | Liveness probe period. |
+| probes.liveness.successThreshold | int | `1` | Consecutive liveness successes required. |
+| probes.liveness.timeoutSeconds | int | `2` | Liveness probe timeout. |
+| probes.readiness.enabled | bool | `false` | Enables the HTTP readiness probe on livenessPort. |
+| probes.readiness.failureThreshold | int | `3` | Consecutive readiness failures before unready. |
+| probes.readiness.initialDelaySeconds | int | `10` | Delay before the readiness probe starts. |
+| probes.readiness.path | string | `"/"` | Readiness probe HTTP path. |
+| probes.readiness.periodSeconds | int | `10` | Readiness probe period. |
+| probes.readiness.successThreshold | int | `1` | Consecutive readiness successes required. |
+| probes.readiness.timeoutSeconds | int | `2` | Readiness probe timeout. |
+| relay.debug | bool | `false` | Adds `--debug`. |
+| relay.extraArgs | list | `[]` | Additional relay arguments not exposed as dedicated values. |
+| relay.interfaces | list | `[]` | Required interfaces passed to `--interfaces`. |
+| relay.noRemoteRelay | bool | `false` | Adds `--noRemoteRelay`. |
+| relay.noTransmitInterfaces | list | `[]` | Listen-only interfaces passed to `--noTransmitInterfaces`. |
+| relay.receiveLocalOutgoing | bool | `false` | Adds `--receiveLocalOutgoing` to receive locally generated multicast traffic through AF_PACKET sockets. |
+| relay.receiveUdp | bool | `false` | Adds `--receiveUdp` to receive multicast traffic through UDP sockets. |
+| relay.remote.addresses | list | `[]` | Remote relay addresses passed to `--remote`. |
+| relay.remote.port | string | `nil` | Required remote relay port when remote addresses are set. |
+| relay.transmitUdp | bool | `false` | Adds `--transmitUdp` instead of using raw sockets for transmission. |
+| relay.verbose | bool | `false` | Adds `--verbose`. |
+| relay.wait | bool | `false` | Adds `--wait` to wait for interface IPv4 addresses. |
+| replicaCount | int | `1` | Number of relay pods. Use 1 when host networking shares the same interface. |
+| resources | object | `{}` | Kubernetes resource requests and limits. |
+| strategy.type | string | `"Recreate"` | Deployment strategy: Recreate or RollingUpdate. |
+| terminationGracePeriodSeconds | int | `30` | Grace period Kubernetes gives the relay after SIGTERM. |
+| tolerations | list | `[]` | Tolerations for pod scheduling. |

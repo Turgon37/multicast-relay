@@ -23,4 +23,3 @@ develsh% easy_install-3.5 netifaces
 And thereafter, multicast-relay.py will be able to run as follows:
 
 % python ./multicast-relay.py
-
