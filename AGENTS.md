@@ -45,11 +45,17 @@
   release inputs together: `chart/Chart.yaml` `appVersion`, the default
   `chart/values.yaml` image tag, Artifact Hub image metadata, and any release
   notes that describe the image.
+- When `appVersion` changes as part of the release flow, also bump
+  `chart/Chart.yaml` `version` so the chart can be released on its own after
+  the image release PR lands.
 - If the change is intended for an official image release, target a Git tag and
   let CI publish the image from that tag. Do not manually publish from the
   agent.
 - If the change is meant for ongoing validation on `master`, keep it on the rc
   stream so the workflows can publish `rc` images automatically.
+- The automated chart bump PR created after a Docker release needs a dedicated
+  bot token such as `RELEASE_BOT_TOKEN`; the default `GITHUB_TOKEN` may be
+  blocked from creating pull requests by repository settings.
 
 ## Default values
 

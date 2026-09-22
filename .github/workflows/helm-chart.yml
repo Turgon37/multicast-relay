@@ -7,8 +7,6 @@ on:
     paths:
       - chart/**
       - .github/workflows/helm-chart.yml
-  workflow_dispatch:
-
 permissions:
   contents: write
   id-token: write
@@ -60,11 +58,7 @@ jobs:
           version = read_field(current, 'version')
           app_version = read_field(current, 'appVersion')
 
-          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
-              version_changed = True
-              appversion_changed = True
-              changed = True
-          elif before and before != zero:
+          if before and before != zero:
               previous = subprocess.run(
                   ['git', 'show', f'{before}:chart/Chart.yaml'],
                   capture_output=True,
