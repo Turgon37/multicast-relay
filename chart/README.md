@@ -1,8 +1,8 @@
 # multicast-relay
 
-![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square)
+![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
-![AppVersion: 1.0.10](https://img.shields.io/badge/AppVersion-1.0.10-informational?style=flat-square)
+![AppVersion: 1.0.13](https://img.shields.io/badge/AppVersion-1.0.13-informational?style=flat-square)
 
 Relay multicast and broadcast UDP packets between networks.
 
@@ -17,7 +17,7 @@ helm upgrade --install multicast-relay \
   oci://ghcr.io/turgon37/charts/multicast-relay \
   --namespace prod-multicastrelay \
   --create-namespace \
-  --version 1.0.0 \
+  --version 1.0.1 \
   --set relay.interfaces[0]=eth0
 ```
 
@@ -71,7 +71,7 @@ annotations are configurable.
 | hostNetwork | bool | `true` | Enables host networking for multicast packet reception and emission. |
 | image.pullPolicy | string | `"IfNotPresent"` | Kubernetes image pull policy. |
 | image.repository | string | `"ghcr.io/turgon37/multicast-relay"` | Container image repository. |
-| image.tag | string | `"1.0.10"` | Container image tag. |
+| image.tag | string | `"1.0.13"` | Container image tag. |
 | livenessPort | int | `10015` | Port used for the k8sport HTTP endpoint and HTTP liveness/readiness probes. |
 | metrics.enabled | bool | `false` | Enables the metrics port and exposes the named container port metrics. |
 | metrics.podMonitor.enabled | bool | `false` | Creates a Prometheus Operator PodMonitor; requires metrics.enabled. |
