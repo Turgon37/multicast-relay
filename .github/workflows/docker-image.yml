@@ -16,7 +16,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs:
+      - validate
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -189,13 +194,15 @@ jobs:
           )
           chart_text = re.sub(
               r'(?ms)^  artifacthub\.io/changes: \|\n(?:.*\n)*?^keywords:$',
-              f'''  artifacthub.io/changes: |
-    - kind: changed
-      description: Sync chart metadata with Docker image release v{version}.
-      links:
-        - name: Changelog
-          url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md
-keywords:''',
+              (
+                  f'  artifacthub.io/changes: |\n'
+                  f'    - kind: changed\n'
+                  f'      description: Sync chart metadata with Docker image release v{version}.\n'
+                  f'      links:\n'
+                  f'        - name: Changelog\n'
+                  f'          url: https://github.com/Turgon37/multicast-relay/blob/master/CHANGELOG.md\n'
+                  f'keywords:'
+              ),
               chart_text,
               count=1,
           )
