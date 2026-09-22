@@ -45,6 +45,9 @@
   release inputs together: `chart/Chart.yaml` `appVersion`, the default
   `chart/values.yaml` image tag, Artifact Hub image metadata, and any release
   notes that describe the image.
+- When `appVersion` changes as part of the release flow, also bump
+  `chart/Chart.yaml` `version` so the chart can be released on its own after
+  the image release PR lands.
 - If the change is intended for an official image release, target a Git tag and
   let CI publish the image from that tag. Do not manually publish from the
   agent.
