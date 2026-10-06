@@ -69,15 +69,19 @@ jobs:
               prev_app = read_field(prev_text, 'appVersion') if prev_text else None
               version_changed = version != prev_version
               appversion_changed = app_version != prev_app
-              diff = subprocess.run(
-                  ['git', 'diff', '--name-only', before, os.environ['GITHUB_SHA']],
-                  capture_output=True,
-                  text=True,
-                  check=True,
-              )
-              changed_files = diff.stdout.splitlines()
-              chart_changed = any(path.startswith('chart/') for path in changed_files)
-              changed = chart_changed or version_changed or appversion_changed
+              try:
+                  diff = subprocess.run(
+                      ['git', 'diff', '--name-only', before, os.environ['GITHUB_SHA']],
+                      capture_output=True,
+                      text=True,
+                      check=True,
+                  )
+              except subprocess.CalledProcessError:
+                  changed = True
+              else:
+                  changed_files = diff.stdout.splitlines()
+                  chart_changed = any(path.startswith('chart/') for path in changed_files)
+                  changed = chart_changed or version_changed or appversion_changed
           else:
               version_changed = appversion_changed = changed = True
 

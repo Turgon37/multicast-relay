@@ -9,6 +9,14 @@ Releases use Git tags in the `vMAJOR.MINOR.PATCH` format. A tag such as
 
 No changes yet.
 
+## [1.3.0] - 2026-10-06
+
+Chart version `1.3.0`, using multicast-relay image version `1.0.10`.
+
+- Bump the chart version for the next release.
+- Add a namespace filter to the Grafana dashboard and scope the instance selector to the selected namespace.
+- Keep the chart metadata and installation example aligned with the published chart version.
+
 ## [1.0.0] - 2026-09-22
 
 Chart version `1.0.0`, using multicast-relay image version `1.0.10`.
